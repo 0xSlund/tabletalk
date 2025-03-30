@@ -1,0 +1,145 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=ClashDisplay:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  
+  body {
+    @apply bg-gradient-to-br from-background-peach to-background-cream text-text-body text-base;
+  }
+
+  h1 {
+    @apply font-clash font-medium text-4xl leading-tight text-text-heading;
+  }
+
+  h2 {
+    @apply font-clash font-medium text-3xl leading-tight text-text-heading;
+  }
+
+  h3 {
+    @apply font-clash font-medium text-2xl leading-tight text-text-heading;
+  }
+
+  h4 {
+    @apply font-clash font-medium text-xl leading-tight text-text-heading;
+  }
+
+  h5, h6 {
+    @apply font-clash font-medium text-lg leading-tight text-text-heading;
+  }
+
+  p {
+    @apply font-inter text-base leading-relaxed text-text-body;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-card border border-card-border/20 rounded-2xl p-6 shadow-card hover:shadow-card-hover transition-all;
+    @apply relative overflow-hidden;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05), 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
+
+  .card-title {
+    @apply font-clash font-medium text-2xl leading-tight text-text-heading mb-2;
+  }
+
+  .card-body {
+    @apply font-inter text-base leading-relaxed text-text-body;
+  }
+
+  .nav-item {
+    @apply flex flex-col items-center gap-1 px-3 py-2 rounded-full transition-colors relative;
+  }
+
+  .nav-item-label {
+    @apply text-sm font-inter font-medium;
+  }
+
+  .nav-item-active {
+    @apply text-white bg-primary shadow-[0_2px_8px_rgba(232,133,107,0.3)];
+  }
+
+  .nav-item-inactive {
+    @apply text-text-muted hover:text-primary/85;
+  }
+
+  .icon {
+    @apply w-6 h-6 stroke-[2px];
+  }
+
+  .icon-primary {
+    @apply text-primary fill-accent-mint/20;
+  }
+
+  .icon-secondary {
+    @apply text-secondary fill-accent-mustard/20;
+  }
+
+  .icon-accent {
+    @apply text-accent-rust fill-accent-mint/20;
+  }
+
+  .icon-neutral {
+    @apply text-text-muted fill-none;
+  }
+
+  .navbar {
+    @apply fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-nav border-b border-card-border/10 z-50;
+  }
+
+  .button {
+    @apply rounded-full px-6 py-3 font-inter font-semibold text-base transition-all duration-320;
+    @apply border-2 flex items-center justify-center gap-2;
+  }
+
+  .button-primary {
+    @apply button bg-primary border-primary text-white;
+    @apply hover:bg-primary-hover hover:border-primary-hover;
+    @apply active:bg-primary-dark active:border-primary-dark;
+  }
+
+  .button-secondary {
+    @apply button bg-secondary border-secondary text-white;
+    @apply hover:bg-secondary-hover hover:border-secondary-hover;
+    @apply active:bg-secondary-dark active:border-secondary-dark;
+  }
+
+  .button-outline {
+    @apply button bg-transparent border-accent-mint text-accent-mint;
+    @apply hover:bg-accent-mint/10;
+    @apply active:bg-accent-mint/20;
+  }
+
+  .button-ghost {
+    @apply button bg-transparent border-transparent text-text-body;
+    @apply hover:bg-gray-100;
+    @apply active:bg-gray-200;
+  }
+
+  .input {
+    @apply bg-white border-2 border-card-border/20 rounded-full px-6 py-3;
+    @apply font-inter text-base;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary;
+    @apply transition-all duration-320;
+  }
+
+  .app-title {
+    @apply font-clash font-medium text-[32px] leading-tight tracking-tight text-text-heading;
+  }
+}
+
+/* Type Scale (1.2 ratio) */
+.text-xs { font-size: 0.694rem; }
+.text-sm { font-size: 0.833rem; }
+.text-base { font-size: 1rem; }
+.text-lg { font-size: 1.2rem; }
+.text-xl { font-size: 1.44rem; }
+.text-2xl { font-size: 1.728rem; }
+.text-3xl { font-size: 2.074rem; }
+.text-4xl { font-size: 2.488rem; }
