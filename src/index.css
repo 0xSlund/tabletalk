@@ -1,0 +1,354 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=ClashDisplay:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light theme variables */
+    --color-text-primary: #1a202c;
+    --color-text-secondary: #4a5568;
+    --color-text-tertiary: #718096;
+    --color-background-primary: #fff;
+    --color-background-secondary: #f7fafc;
+    --color-primary: #e8856b;
+    --primary-rgb: 232, 133, 107;
+    --color-primary-hover: #e67a5d;
+    --color-primary-dark: #d56952;
+    --color-secondary: #5b7bb6;
+    --secondary-rgb: 91, 123, 182;
+    --color-accent-mint: #5eead4;
+    --accent-mint-rgb: 94, 234, 212;
+    --color-accent-mustard: #fcd34d;
+    --accent-mustard-rgb: 252, 211, 77;
+    --color-accent-rust: #c2410c;
+    --accent-rust-rgb: 194, 65, 12;
+    --color-card: #ffffff;
+    --color-card-border: #e2e8f0;
+    --color-bg-gradient-from: #FCF8F4;
+    --color-bg-gradient-to: #FAEEE8;
+    
+    /* Spacing */
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    
+    /* Typography */
+    --line-height-tight: 1.25;
+    --line-height-normal: 1.5;
+    --line-height-relaxed: 1.75;
+    
+    /* Border Radius */
+    --radius-sm: 0.25rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    --radius-2xl: 1.5rem;
+    --radius-full: 9999px;
+  }
+  
+  .dark-mode {
+    /* Dark theme variables */
+    --color-text-primary: #f7fafc;
+    --color-text-secondary: #e2e8f0;
+    --color-text-tertiary: #a0aec0;
+    --color-background-primary: #1a202c;
+    --color-background-secondary: #2d3748;
+    --color-primary: #f8997a;
+    --primary-rgb: 248, 153, 122;
+    --color-primary-hover: #f9a387;
+    --color-primary-dark: #e8856b;
+    --color-secondary: #6d8ec9;
+    --secondary-rgb: 109, 142, 201;
+    --color-accent-mint: #2dd4bf;
+    --accent-mint-rgb: 45, 212, 191;
+    --color-accent-mustard: #fbbf24;
+    --accent-mustard-rgb: 251, 191, 36;
+    --color-accent-rust: #ea580c;
+    --accent-rust-rgb: 234, 88, 12;
+    --color-card: #2d3748;
+    --color-card-border: #4a5568;
+    --color-bg-gradient-from: #1e293b;
+    --color-bg-gradient-to: #0f172a;
+  }
+
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  
+  body {
+    @apply bg-gradient-to-br from-background-peach to-background-cream text-text-body text-base;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    overflow-x: hidden !important;
+  }
+
+  .dark-mode body {
+    @apply bg-gradient-to-br from-gray-900 to-gray-800 text-gray-100;
+  }
+
+  h1 {
+    @apply font-clash font-medium text-4xl leading-tight text-text-heading;
+  }
+
+  h2 {
+    @apply font-clash font-medium text-3xl leading-tight text-text-heading;
+  }
+
+  h3 {
+    @apply font-clash font-medium text-2xl leading-tight text-text-heading;
+  }
+
+  h4 {
+    @apply font-clash font-medium text-xl leading-tight text-text-heading;
+  }
+
+  h5, h6 {
+    @apply font-clash font-medium text-lg leading-tight text-text-heading;
+  }
+
+  p {
+    @apply font-inter text-base leading-relaxed text-text-body;
+  }
+  
+  .dark-mode h1,
+  .dark-mode h2,
+  .dark-mode h3,
+  .dark-mode h4,
+  .dark-mode h5,
+  .dark-mode h6 {
+    @apply text-white;
+  }
+  
+  .dark-mode p {
+    @apply text-gray-300;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-card border border-opacity-20 border-card-border rounded-2xl p-6 shadow-card hover:shadow-card-hover transition-all;
+    @apply relative overflow-hidden;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05), 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
+  
+  .dark-mode .card {
+    @apply bg-gray-800 border-gray-700;
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.03), 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .card-title {
+    @apply font-clash font-medium text-2xl leading-tight text-text-heading mb-2;
+  }
+  
+  .dark-mode .card-title {
+    @apply text-white;
+  }
+
+  .card-body {
+    @apply font-inter text-base leading-relaxed text-text-body;
+  }
+  
+  .dark-mode .card-body {
+    @apply text-gray-300;
+  }
+
+  .nav-item {
+    @apply flex flex-col items-center gap-1 px-3 py-2 rounded-full transition-colors relative;
+  }
+
+  .nav-item-label {
+    @apply text-sm font-inter font-medium;
+  }
+
+  .nav-item-active {
+    @apply text-white bg-primary shadow-[0_2px_8px_rgba(232,133,107,0.3)];
+  }
+  
+  .dark-mode .nav-item-active {
+    @apply shadow-[0_2px_8px_rgba(248,153,122,0.3)];
+  }
+
+  .nav-item-inactive {
+    @apply text-text-muted hover:text-primary hover:opacity-85;
+  }
+  
+  .dark-mode .nav-item-inactive {
+    @apply text-gray-400 hover:text-primary hover:opacity-85;
+  }
+
+  .icon {
+    @apply w-6 h-6 stroke-[2px];
+  }
+
+  .icon-primary {
+    @apply text-primary fill-accent-mint opacity-20;
+  }
+
+  .icon-secondary {
+    @apply text-secondary fill-accent-mustard opacity-20;
+  }
+
+  .icon-accent {
+    @apply text-accent-rust fill-accent-mint opacity-20;
+  }
+
+  .icon-neutral {
+    @apply text-text-muted fill-none;
+  }
+  
+  .dark-mode .icon-neutral {
+    @apply text-gray-400;
+  }
+
+  .navbar {
+    @apply fixed top-0 left-0 right-0 bg-white backdrop-blur-nav border-b border-opacity-10 border-card-border z-50 bg-opacity-90;
+  }
+  
+  .dark-mode .navbar {
+    @apply bg-gray-900 bg-opacity-90 border-gray-700 border-opacity-20;
+  }
+
+  .button {
+    @apply rounded-full px-6 py-3 font-inter font-semibold text-base transition-all duration-320;
+    @apply border-2 flex items-center justify-center gap-2;
+  }
+
+  .button-primary {
+    @apply button bg-primary border-primary text-white;
+    @apply hover:bg-primary-hover hover:border-primary-hover;
+    @apply active:bg-primary-dark active:border-primary-dark;
+  }
+
+  .button-secondary {
+    @apply button bg-secondary border-secondary text-white;
+    @apply hover:bg-secondary-hover hover:border-secondary-hover;
+    @apply active:bg-secondary-dark active:border-secondary-dark;
+  }
+
+  .button-outline {
+    @apply button bg-transparent border-accent-mint text-accent-mint;
+    @apply hover:bg-accent-mint hover:bg-opacity-10;
+    @apply active:bg-accent-mint active:bg-opacity-20;
+  }
+  
+  .dark-mode .button-outline {
+    @apply border-accent-mint border-opacity-70 text-accent-mint text-opacity-90;
+    @apply hover:bg-accent-mint hover:bg-opacity-20;
+    @apply active:bg-accent-mint active:bg-opacity-30;
+  }
+
+  .button-ghost {
+    @apply button bg-transparent border-transparent text-text-body;
+    @apply hover:bg-gray-100;
+    @apply active:bg-gray-200;
+  }
+  
+  .dark-mode .button-ghost {
+    @apply text-gray-300;
+    @apply hover:bg-gray-700;
+    @apply active:bg-gray-600;
+  }
+
+  .input {
+    @apply bg-white border-2 border-opacity-20 border-card-border rounded-full px-6 py-3;
+    @apply font-inter text-base;
+    @apply focus:outline-none focus:ring-2 focus:ring-opacity-20 focus:ring-primary focus:border-primary;
+    @apply transition-all duration-320;
+  }
+  
+  .dark-mode .input {
+    @apply bg-gray-800 border-gray-700 text-white;
+    @apply focus:ring-primary focus:ring-opacity-30 focus:border-primary focus:border-opacity-80;
+  }
+
+  .app-title {
+    @apply font-clash font-medium text-[32px] leading-tight tracking-tight text-text-heading;
+  }
+  
+  .dark-mode .app-title {
+    @apply text-white;
+  }
+  
+  /* Empty State Patterns */
+  .pattern-dots {
+    background-image: radial-gradient(var(--tw-gradient-from) 2px, transparent 2px);
+    background-size: 20px 20px;
+  }
+  
+  .pattern-grid {
+    background-image: linear-gradient(to right, var(--tw-gradient-from) 1px, transparent 1px),
+                      linear-gradient(to bottom, var(--tw-gradient-from) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+}
+
+/* Type Scale (1.2 ratio) */
+.text-xs { font-size: 0.694rem; }
+.text-sm { font-size: 0.833rem; }
+.text-base { font-size: 1rem; }
+.text-lg { font-size: 1.2rem; }
+.text-xl { font-size: 1.44rem; }
+.text-2xl { font-size: 1.728rem; }
+.text-3xl { font-size: 2.074rem; }
+.text-4xl { font-size: 2.488rem; }
+
+/* Improved typography for better readability */
+.text-base { line-height: var(--line-height-normal); }
+.text-lg { line-height: var(--line-height-normal); }
+.text-xl { line-height: var(--line-height-tight); }
+.text-2xl { line-height: var(--line-height-tight); }
+
+/* Animation utilities */
+.fade-in {
+  animation: fadeIn 0.5s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.slide-up {
+  animation: slideUp 0.5s ease forwards;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Accessibility focus styles */
+.focus-visible:focus {
+  @apply outline-none ring-2 ring-primary ring-offset-2;
+}
+
+.dark-mode .focus-visible:focus {
+  @apply ring-primary ring-opacity-70 ring-offset-gray-900;
+}
+
+/* Improved contrast for better accessibility */
+.high-contrast-text {
+  text-shadow: 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+.dark-mode .high-contrast-text {
+  text-shadow: 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+/* Add these animations to your existing CSS file */
+@keyframes fadeSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-15px) translateX(-50%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-100%) translateX(0);
+  }
+}
+
+.animate-fadeSlideDown {
+  animation: fadeSlideDown 0.3s ease-out forwards;
+}
