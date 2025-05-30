@@ -681,7 +681,7 @@ export const TimerSettingsSection: React.FC<TimerSettingsSectionProps> = ({
                   Custom
                 </motion.span>
                 <span className={cn("text-sm font-medium transition-colors duration-300", timerOption === 'custom' ? "text-purple-700" : "text-gray-500 group-hover:text-purple-600")}>
-                  You Decide
+                  Thoughtful consideration for complex choices
                 </span>
               </div>
             </div>
@@ -698,13 +698,16 @@ export const TimerSettingsSection: React.FC<TimerSettingsSectionProps> = ({
         <AnimatePresence>
           {timerOption === 'custom' && isCustomDetailOpen && (
             <motion.div
-              className="bg-gradient-to-b from-purple-50/40 to-white/80 border-t border-purple-200/40 relative z-10"
+              className="bg-gradient-to-b from-purple-50/40 to-white/80 border-t border-purple-200/40 relative z-10 overflow-hidden"
               initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
+              animate={{ height: '380px', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.3 }}
+              transition={{ 
+                duration: 0.3,
+                ease: [0.25, 0.46, 0.45, 0.94]
+              }}
             >
-              <div className="p-5 flex flex-col items-center gap-6 relative z-10">
+              <div className="p-5 flex flex-col items-center gap-6 relative z-10 h-full">
                 
                 <UnitSelector 
                   tempUnit={tempUnit}
@@ -712,27 +715,26 @@ export const TimerSettingsSection: React.FC<TimerSettingsSectionProps> = ({
                   isConfirmed={isConfirmed}
                 />
 
-                <div className="relative">
+                <div className="relative w-full flex justify-center h-32">
                   <AnimatePresence mode="wait">
                     {!isConfirmed && tempUnit === 'hours' && (
                       <motion.div 
                         key="hours-mode"
-                        className="flex items-center justify-center gap-3 w-full bg-gradient-to-b from-purple-50/80 to-white/90 rounded-xl p-4 border border-purple-100/60 shadow-lg max-w-md mx-auto"
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: -20 }}
+                        className="flex items-center justify-center gap-3 w-full bg-gradient-to-b from-purple-50/80 to-white/90 rounded-xl p-4 border border-purple-100/60 shadow-lg max-w-md mx-auto h-full"
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.98 }}
                         transition={{ 
-                          duration: 0.4, 
+                          duration: 0.2, 
                           ease: [0.25, 0.46, 0.45, 0.94],
-                          staggerChildren: 0.1
                         }}
                       >
                         <motion.div
                           className="flex-shrink-0"
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -20 }}
-                          transition={{ duration: 0.3, delay: 0.1 }}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.15, delay: 0.05 }}
                         >
                           <CustomTimeInputGroup
                             label="Hours"
@@ -763,10 +765,10 @@ export const TimerSettingsSection: React.FC<TimerSettingsSectionProps> = ({
                         
                         <motion.div
                           className="flex-shrink-0"
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: 20 }}
-                          transition={{ duration: 0.3, delay: 0.1 }}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.15, delay: 0.05 }}
                         >
                           <CustomTimeInputGroup
                             label="Minutes"
@@ -792,12 +794,12 @@ export const TimerSettingsSection: React.FC<TimerSettingsSectionProps> = ({
                     {!isConfirmed && tempUnit === 'minutes' && (
                       <motion.div 
                         key="minutes-mode"
-                        className="flex flex-col items-center bg-gradient-to-b from-purple-50/80 to-white/90 rounded-xl p-6 border border-purple-100/60 shadow-lg"
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: -20 }}
+                        className="flex flex-col items-center justify-center bg-gradient-to-b from-purple-50/80 to-white/90 rounded-xl p-6 border border-purple-100/60 shadow-lg max-w-md mx-auto h-full"
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.98 }}
                         transition={{ 
-                          duration: 0.4, 
+                          duration: 0.2, 
                           ease: [0.25, 0.46, 0.45, 0.94]
                         }}
                       >
@@ -820,6 +822,27 @@ export const TimerSettingsSection: React.FC<TimerSettingsSectionProps> = ({
                         />
                       </motion.div>
                     )}
+
+                    {isConfirmed && (
+                      <motion.div 
+                        key="confirmed-mode"
+                        className="flex items-center justify-center w-full max-w-md mx-auto h-full"
+                        initial={{ opacity: 0, scale: 0.98, y: 10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.98, y: -10 }}
+                        transition={{ 
+                          duration: 0.25, 
+                          ease: [0.25, 0.46, 0.45, 0.94]
+                        }}
+                      >
+                        <div className="mt-32">
+                          <ConfirmedStateDisplay
+                            isConfirmed={isConfirmed}
+                            getTotalTimeDisplay={getTotalTimeDisplay}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
                   </AnimatePresence>
                   
                   <LimitMessage
@@ -833,19 +856,20 @@ export const TimerSettingsSection: React.FC<TimerSettingsSectionProps> = ({
                   />
                 </div>
 
-                <div className="flex flex-col items-center w-full">
-                  <ConfirmedStateDisplay
-                    isConfirmed={isConfirmed}
-                    getTotalTimeDisplay={getTotalTimeDisplay}
-                  />
-
-                  <div className="flex gap-3 mt-6">
+                <div className="flex flex-col items-center w-full flex-1 justify-end pb-2">
+                  <div className="flex gap-3">
                     {!isConfirmed ? (
                       <motion.button
                         type="button"
                         onClick={handleConfirm}
-                        className="px-6 py-2.5 bg-purple-600 text-white text-sm font-semibold rounded-lg hover:bg-purple-700 transition-colors duration-200 z-10 relative cursor-pointer"
-                        whileTap={{ scale: 0.98 }}
+                        className="px-8 py-3.5 bg-purple-600 text-white text-base font-semibold rounded-xl hover:bg-purple-700 transition-all duration-200 z-10 relative cursor-pointer shadow-lg hover:shadow-xl min-w-[140px]"
+                        whileTap={{ scale: 0.95 }}
+                        whileHover={{ 
+                          scale: 1.05,
+                          y: -2,
+                          boxShadow: "0 20px 40px -12px rgba(168, 85, 247, 0.4)"
+                        }}
+                        transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
                       >
                         Confirm Timer
                       </motion.button>
@@ -853,8 +877,14 @@ export const TimerSettingsSection: React.FC<TimerSettingsSectionProps> = ({
                       <motion.button
                         type="button"
                         onClick={handleEdit}
-                        className="px-4 py-2 bg-purple-100 text-purple-700 text-sm font-medium rounded-lg hover:bg-purple-200 transition-colors duration-200 z-10 relative cursor-pointer"
-                        whileTap={{ scale: 0.98 }}
+                        className="px-8 py-3.5 bg-purple-100 text-purple-700 text-base font-semibold rounded-xl hover:bg-purple-200 transition-all duration-200 z-10 relative cursor-pointer shadow-md hover:shadow-lg min-w-[140px]"
+                        whileTap={{ scale: 0.95 }}
+                        whileHover={{ 
+                          scale: 1.05,
+                          y: -2,
+                          boxShadow: "0 15px 30px -8px rgba(168, 85, 247, 0.25)"
+                        }}
+                        transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
                       >
                         Edit Timer
                       </motion.button>
@@ -867,9 +897,6 @@ export const TimerSettingsSection: React.FC<TimerSettingsSectionProps> = ({
         </AnimatePresence>
       </motion.div>
       
-      <p className="text-sm text-gray-600 italic">
-        Thoughtful consideration for complex choices
-      </p>
     </div>
   );
 };
