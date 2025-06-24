@@ -80,8 +80,8 @@ export const TimerSettingsSection: React.FC<TimerSettingsSectionProps> = ({
     console.log('handleIncrement - unitToUse:', unitToUse, 'type:', type);
 
     if (unitToUse === 'hours') {
-      let currentHours = parseInt(tempHours) || 0;
-      let currentMinutes = parseInt(tempMinutes) || 0;
+      const currentHours = parseInt(tempHours) || 0;
+      const currentMinutes = parseInt(tempMinutes) || 0;
       console.log('handleIncrement - current values:', { currentHours, currentMinutes });
       const maxHours = 24;
       const maxMinutes = 59;
@@ -150,7 +150,7 @@ export const TimerSettingsSection: React.FC<TimerSettingsSectionProps> = ({
 
     } else {
       const currentValStr = isConfirmed ? customDurationRef.current : tempDuration;
-      let currentValue = parseInt(currentValStr) || 0;
+      const currentValue = parseInt(currentValStr) || 0;
       console.log('handleIncrement - minutes mode, currentValue:', currentValue);
       const maxValue = 59;
       
@@ -177,8 +177,8 @@ export const TimerSettingsSection: React.FC<TimerSettingsSectionProps> = ({
     const type = unitToUse === 'hours' ? (typeInput || 'minutes') : 'minutes';
 
     if (unitToUse === 'hours') {
-      let currentHours = parseInt(tempHours) || 0;
-      let currentMinutes = parseInt(tempMinutes) || 0;
+      const currentHours = parseInt(tempHours) || 0;
+      const currentMinutes = parseInt(tempMinutes) || 0;
 
       let updatedHours = currentHours;
       let updatedMinutes = currentMinutes;
@@ -224,7 +224,7 @@ export const TimerSettingsSection: React.FC<TimerSettingsSectionProps> = ({
 
     } else {
       const currentValStr = isConfirmed ? customDurationRef.current : tempDuration;
-      let currentValue = parseInt(currentValStr) || 1;
+      const currentValue = parseInt(currentValStr) || 1;
       const newValue = Math.max(1, currentValue - 1);
       setDurFn(newValue.toString());
     }

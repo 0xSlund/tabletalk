@@ -4,6 +4,7 @@ import { useAppStore } from '../../../../lib/store';
 import { formatTime } from '../../utils/formatters';
 import { supabase } from '../../../../lib/supabase';
 import { motion } from 'framer-motion';
+import { handleExpiredRoom } from '../../utils/expiredRoomHandler';
 
 export const RoomSidebar: React.FC = () => {
   const { currentRoom, fetchUserProfile } = useAppStore();
@@ -115,7 +116,6 @@ export const RoomSidebar: React.FC = () => {
         
         // When the timer expires naturally, make sure we trigger the expired room handling
         if (currentRoom.id) {
-          const { handleExpiredRoom } = require('../../utils/expiredRoomHandler');
           handleExpiredRoom(currentRoom.id);
         }
       }

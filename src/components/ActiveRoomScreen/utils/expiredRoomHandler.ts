@@ -102,7 +102,7 @@ export const handleExpiredRoom = async (roomId: string): Promise<boolean> => {
     }
     
     // Merge current room's suggestions with the ones we just fetched
-    let mergedSuggestions = [...formattedSuggestions];
+    const mergedSuggestions = [...formattedSuggestions];
     
     // If we have suggestions in the current room, merge them
     if (currentRoom.suggestions && currentRoom.suggestions.length > 0) {

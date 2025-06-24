@@ -189,7 +189,7 @@ export function StepBasicInfo({
     setTimeout(() => {
       setOpenSections(prev => {
         // Start with all sections closed
-        let updatedSections = {
+        const updatedSections = {
           foodMode: false,
           diningOptions: false,
           cuisineTypes: false,
