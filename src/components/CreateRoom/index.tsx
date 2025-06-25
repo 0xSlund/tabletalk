@@ -12,9 +12,10 @@ import { ThemeEffect } from './ThemeEffect';
 
 interface CreateRoomScreenProps {
   initialView?: 'quick' | 'custom' | 'templates';
+  initialStep?: 'basic-info' | 'settings' | 'summary';
 }
 
-export default function CreateRoomScreen({ initialView }: CreateRoomScreenProps) {
+export default function CreateRoomScreen({ initialView, initialStep }: CreateRoomScreenProps) {
   const { setActiveTab, createRoom } = useAppStore();
   const navigate = useNavigate();
   const [roomCreated, setRoomCreated] = useState(false);
@@ -27,26 +28,99 @@ export default function CreateRoomScreen({ initialView }: CreateRoomScreenProps)
     height: window.innerHeight,
   });
   const [selectedTheme, setSelectedTheme] = useState(0);
+  const [foodMode, setFoodMode] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('tabletalk-create-food-mode') || null;
+    }
+    return null;
+  });
 
-  // Room Basic Info state
-  const [roomName, setRoomName] = useState('');
-  const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
-  const [priceRange, setPriceRange] = useState<string[]>([]);
-  const [radius, setRadius] = useState(5);
+  // Room Basic Info state with localStorage persistence
+  const [roomName, setRoomName] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('tabletalk-create-room-name') || '';
+    }
+    return '';
+  });
+  const [selectedCuisines, setSelectedCuisines] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('tabletalk-create-selected-cuisines');
+      return saved ? JSON.parse(saved) : [];
+    }
+    return [];
+  });
+  const [priceRange, setPriceRange] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('tabletalk-create-price-range');
+      return saved ? JSON.parse(saved) : [];
+    }
+    return [];
+  });
+  const [radius, setRadius] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('tabletalk-create-radius');
+      return saved ? parseInt(saved) : 5;
+    }
+    return 5;
+  });
   
-  // Room Settings state
-  const [participantLimit, setParticipantLimit] = useState<number | null>(null);
-  const [timerOption, setTimerOption] = useState('');
-  const [customDuration, setCustomDuration] = useState('30');
-  const [durationUnit, setDurationUnit] = useState<'minutes' | 'hours'>('minutes');
-  const [deadline, setDeadline] = useState('');
-  const [reminders, setReminders] = useState(true);
+  // Room Settings state with localStorage persistence
+  const [participantLimit, setParticipantLimit] = useState<number | null>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('tabletalk-create-participant-limit');
+      return saved ? parseInt(saved) : null;
+    }
+    return null;
+  });
+  const [timerOption, setTimerOption] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('tabletalk-create-timer-option') || '';
+    }
+    return '';
+  });
+  const [customDuration, setCustomDuration] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('tabletalk-create-custom-duration') || '30';
+    }
+    return '30';
+  });
+  const [durationUnit, setDurationUnit] = useState<'minutes' | 'hours'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('tabletalk-create-duration-unit');
+      return (saved as 'minutes' | 'hours') || 'minutes';
+    }
+    return 'minutes';
+  });
+  const [deadline, setDeadline] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('tabletalk-create-deadline') || '';
+    }
+    return '';
+  });
+  const [reminders, setReminders] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('tabletalk-create-reminders');
+      return saved ? JSON.parse(saved) : true;
+    }
+    return true;
+  });
   
-  // Room Invite state
+  // Room Invite state with localStorage persistence
   const [searchTerm, setSearchTerm] = useState('');
   const [showContactSearch, setShowContactSearch] = useState(false);
-  const [saveAsTemplate, setSaveAsTemplate] = useState(false);
-  const [templateName, setTemplateName] = useState('');
+  const [saveAsTemplate, setSaveAsTemplate] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('tabletalk-create-save-as-template');
+      return saved ? JSON.parse(saved) : false;
+    }
+    return false;
+  });
+  const [templateName, setTemplateName] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('tabletalk-create-template-name') || '';
+    }
+    return '';
+  });
   
   // UI state
   const [showOptions, setShowOptions] = useState(!initialView);
@@ -58,6 +132,63 @@ export default function CreateRoomScreen({ initialView }: CreateRoomScreenProps)
   const [isExiting, setIsExiting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdRoomId, setCreatedRoomId] = useState<string | null>(null);
+
+  // Persist form state to localStorage
+  useEffect(() => {
+    localStorage.setItem('tabletalk-create-room-name', roomName);
+  }, [roomName]);
+
+  useEffect(() => {
+    localStorage.setItem('tabletalk-create-selected-cuisines', JSON.stringify(selectedCuisines));
+  }, [selectedCuisines]);
+
+  useEffect(() => {
+    localStorage.setItem('tabletalk-create-price-range', JSON.stringify(priceRange));
+  }, [priceRange]);
+
+  useEffect(() => {
+    localStorage.setItem('tabletalk-create-radius', radius.toString());
+  }, [radius]);
+
+  useEffect(() => {
+    localStorage.setItem('tabletalk-create-participant-limit', participantLimit?.toString() || '');
+  }, [participantLimit]);
+
+  useEffect(() => {
+    localStorage.setItem('tabletalk-create-timer-option', timerOption);
+  }, [timerOption]);
+
+  useEffect(() => {
+    localStorage.setItem('tabletalk-create-custom-duration', customDuration);
+  }, [customDuration]);
+
+  useEffect(() => {
+    localStorage.setItem('tabletalk-create-duration-unit', durationUnit);
+  }, [durationUnit]);
+
+  useEffect(() => {
+    localStorage.setItem('tabletalk-create-deadline', deadline);
+  }, [deadline]);
+
+  useEffect(() => {
+    localStorage.setItem('tabletalk-create-reminders', JSON.stringify(reminders));
+  }, [reminders]);
+
+  useEffect(() => {
+    localStorage.setItem('tabletalk-create-save-as-template', JSON.stringify(saveAsTemplate));
+  }, [saveAsTemplate]);
+
+  useEffect(() => {
+    localStorage.setItem('tabletalk-create-template-name', templateName);
+  }, [templateName]);
+
+  useEffect(() => {
+    if (foodMode) {
+      localStorage.setItem('tabletalk-create-food-mode', foodMode);
+    } else {
+      localStorage.removeItem('tabletalk-create-food-mode');
+    }
+  }, [foodMode]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -103,23 +234,48 @@ export default function CreateRoomScreen({ initialView }: CreateRoomScreenProps)
     setShowCustomCreate(false);
   };
 
-  const handleCreateFromTemplate = async (templateName: string, timerDuration: number, locationRadius: number) => {
+  const handleCreateFromTemplate = async (template: any) => {
     setLoading(true);
     setError(null);
     
     try {
-      // Update UI state with template values
-      setRoomName(templateName);
-      setTimerOption(timerDuration.toString());
-      setRadius(locationRadius);
+      // Calculate timer in minutes
+      let timerMinutes = 30; // Default
+      if (template.timer_option === 'custom') {
+        timerMinutes = parseInt(template.custom_duration || '30');
+        if (template.duration_unit === 'hours') {
+          timerMinutes *= 60;
+        }
+      } else {
+        timerMinutes = parseInt(template.timer_option || '30');
+      }
       
-      // Create the room
-      const result = await createRoom(templateName, timerDuration);
+      console.log(`Creating room from template: ${template.name}, timer: ${timerMinutes} minutes`);
+      
+      // Apply template settings to current state
+      setRoomName(template.room_name);
+      setSelectedTheme(template.food_mode);
+      setFoodMode(template.food_mode);
+      setSelectedCuisines(template.selected_cuisines || []);
+      setPriceRange(template.price_range || []);
+      setRadius(template.radius || 5);
+      setParticipantLimit(template.participant_limit);
+      setTimerOption(template.timer_option || '30');
+      setCustomDuration(template.custom_duration || '30');
+      setDurationUnit(template.duration_unit || 'minutes');
+      setDeadline(template.deadline || '');
+      setReminders(template.reminders || false);
+      setSelectedContacts(template.selected_contacts || []);
+      
+      // Create the room with the template settings
+      const result = await createRoom(template.room_name, timerMinutes, template.food_mode);
       
       // If room creation failed, throw an error
       if (!result || !result.roomId || !result.roomCode) {
-        throw new Error('Failed to create room');
+        throw new Error('Failed to create room from template');
       }
+      
+      console.log(`Template room created successfully with ID: ${result.roomId} and code: ${result.roomCode}`);
       
       // Room was created successfully - update UI
       setRoomLink(result.roomCode);
@@ -136,10 +292,16 @@ export default function CreateRoomScreen({ initialView }: CreateRoomScreenProps)
       // Store room ID in localStorage for navigation
       localStorage.setItem('tabletalk-last-room-id', result.roomId);
       
+      // Clear form state from localStorage since room was created successfully
+      clearFormLocalStorage();
+      
+      // Close templates view and go to room created state
+      setShowSavedTemplates(false);
+      
       return result;
     } catch (error) {
       console.error('Error creating room from template:', error);
-      setError('An unexpected error occurred. Please try again.');
+      setError('Failed to create room from template. Please try again.');
       
       // Reset UI states
       setLoading(false);
@@ -156,6 +318,13 @@ export default function CreateRoomScreen({ initialView }: CreateRoomScreenProps)
     setError(null);
     setSelectedTheme(theme);
     
+    // Map QuickCreate theme to food mode
+    // 0: Food Fiesta -> 'both' (cooking + dining out)
+    // 1: Cozy Gathering -> 'cooking' (home cooking vibes) 
+    // 2: Surprise Me -> 'dining-out' (adventure, going out)
+    const themeFoodModeMap = ['both', 'cooking', 'dining-out'];
+    const themeFoodMode = themeFoodModeMap[theme] || 'both';
+    
     try {
       console.log(`Quick creating room "${roomName}" with timer: ${time} minutes, theme: ${theme}`);
       
@@ -169,8 +338,8 @@ export default function CreateRoomScreen({ initialView }: CreateRoomScreenProps)
       setReminders(false); // Disabled
       
       // Create the room
-      console.log('Calling createRoom function with:', { roomName, time });
-      const result = await createRoom(roomName, time);
+      console.log('Calling createRoom function with:', { roomName, time, foodMode: themeFoodMode });
+      const result = await createRoom(roomName, time, themeFoodMode);
       console.log('CreateRoom result:', result);
       
       // If room creation failed, throw an error
@@ -195,6 +364,9 @@ export default function CreateRoomScreen({ initialView }: CreateRoomScreenProps)
       
       // Store room ID in localStorage for navigation
       localStorage.setItem('tabletalk-last-room-id', result.roomId);
+      
+      // Clear form state from localStorage since room was created successfully
+      clearFormLocalStorage();
       
       // Return the result for the calling component
       return result;
@@ -234,6 +406,9 @@ export default function CreateRoomScreen({ initialView }: CreateRoomScreenProps)
     setShowOptions(true);
     setShowQuickCreate(false);
     setShowSavedTemplates(false);
+    
+    // Don't clear localStorage here - let users keep their progress
+    // Form will only be cleared when room is successfully created
   };
 
   const handleCreateRoom = async (e: React.FormEvent) => {
@@ -258,8 +433,46 @@ export default function CreateRoomScreen({ initialView }: CreateRoomScreenProps)
       
       console.log(`Creating room with timer duration: ${minutes} minutes, option: ${timerOption}`);
       
+      // Save as template if requested (before creating room)
+      if (saveAsTemplate && templateName.trim()) {
+        try {
+                      const { TemplateService } = await import('../../lib/templateService');
+          
+          const templateData = {
+            name: templateName.trim(),
+            roomName: roomName,
+            foodMode: selectedTheme, // Use selectedTheme which corresponds to foodMode
+            selectedCuisines: selectedCuisines,
+            priceRange: priceRange,
+            radius: radius,
+            participantLimit: participantLimit,
+            timerOption: timerOption,
+            customDuration: customDuration,
+            durationUnit: durationUnit,
+            deadline: deadline,
+            reminders: reminders,
+            selectedContacts: selectedContacts,
+            description: `Template created from room: ${roomName}`,
+            isPublic: false // Keep templates private by default
+          };
+          
+          const templateResult = await TemplateService.saveTemplate(templateData);
+          
+          if (templateResult.success) {
+            console.log('Template saved successfully:', templateResult.template);
+            // You could show a toast notification here
+          } else {
+            console.error('Failed to save template:', templateResult.error);
+            // Show warning but don't prevent room creation
+          }
+        } catch (templateError) {
+          console.error('Error saving template:', templateError);
+          // Continue with room creation even if template saving fails
+        }
+      }
+      
       // Create the room
-      const result = await createRoom(roomName, minutes);
+      const result = await createRoom(roomName, minutes, foodMode);
       
       // If room creation failed, throw an error
       if (!result || !result.roomId || !result.roomCode) {
@@ -282,6 +495,9 @@ export default function CreateRoomScreen({ initialView }: CreateRoomScreenProps)
       
       // Store room ID in localStorage for navigation
       localStorage.setItem('tabletalk-last-room-id', result.roomId);
+      
+      // Clear form state from localStorage since room was created successfully
+      clearFormLocalStorage();
       
       return result;
     } catch (error) {
@@ -344,15 +560,35 @@ export default function CreateRoomScreen({ initialView }: CreateRoomScreenProps)
     // Set the active tab to active-room for state consistency
     setActiveTab('active-room');
     
-    // Use direct navigation to the active-room path - with a slight delay
+    // Use direct navigation to the room code path - with a slight delay
     setTimeout(() => {
-      navigate('/active-room');
+      navigate(`/active-room/${roomLink}`);
     }, 100);
   };
 
-  const filteredContacts = mockContacts.filter(contact => 
+    const filteredContacts = mockContacts.filter(contact =>
     contact.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Helper function to clear form data from localStorage
+  const clearFormLocalStorage = () => {
+    const keys = [
+      'tabletalk-create-room-name',
+      'tabletalk-create-selected-cuisines',
+      'tabletalk-create-price-range',
+      'tabletalk-create-radius',
+      'tabletalk-create-participant-limit',
+      'tabletalk-create-timer-option',
+      'tabletalk-create-custom-duration',
+      'tabletalk-create-duration-unit',
+      'tabletalk-create-deadline',
+      'tabletalk-create-reminders',
+      'tabletalk-create-save-as-template',
+      'tabletalk-create-template-name',
+      'tabletalk-create-food-mode'
+    ];
+    keys.forEach(key => localStorage.removeItem(key));
+  };
 
   const toggleContact = (contactId: string) => {
     setSelectedContacts(prev => 
@@ -363,7 +599,7 @@ export default function CreateRoomScreen({ initialView }: CreateRoomScreenProps)
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
+    <div className="min-h-screen bg-gradient-to-br from-[#FFFDF9] via-[#FAF8F5] to-[#F3ECE3]">
       {/* Theme-specific effect - replaced standard Confetti */}
       <ThemeEffect
         theme={selectedTheme}
@@ -381,6 +617,7 @@ export default function CreateRoomScreen({ initialView }: CreateRoomScreenProps)
         onNavigateToRoom={navigateToRoom}
         autoNavigateDelay={5000}
         theme={selectedTheme}
+        foodMode={foodMode}
       />
 
       <AnimatePresence mode="wait">
@@ -436,6 +673,9 @@ export default function CreateRoomScreen({ initialView }: CreateRoomScreenProps)
             loading={loading}
             handleCreateRoom={handleCreateRoom}
             onBack={handleCustomCreateBack}
+            foodMode={foodMode}
+            setFoodMode={setFoodMode}
+            initialStep={initialStep}
           />
         ) : null}
       </AnimatePresence>

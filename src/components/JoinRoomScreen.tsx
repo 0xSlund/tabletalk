@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { UtensilsCrossed, ArrowLeft, UserPlus, X, Loader2, Check, Clipboard, Link2, Users } from 'lucide-react';
 import { useAppStore } from '../lib/store';
 import { fadeVariants } from './PageTransition';
+import { pageTransitionVariants } from '../lib/utils';
 import BackButton from './BackButton';
 
 export function JoinRoomScreen() {
@@ -38,7 +39,13 @@ export function JoinRoomScreen() {
       if (joined) {
         setSuccess(`Successfully joined ${roomName}!`);
         setTimeout(() => {
+          // Get the current room from store to get the room code
+          const { currentRoom } = useAppStore.getState();
+          if (currentRoom?.code) {
+            window.location.href = `/active-room/${currentRoom.code}`;
+          } else {
           handleNavigate('active-room');
+          }
          }, 1500);
       } else {
         setError('Invalid code or room not found. Please try again.');
@@ -73,22 +80,15 @@ export function JoinRoomScreen() {
     }, 300);
   };
 
-  // Page transition variants
-  const pageVariants = {
-    initial: { opacity: 1 },
-    exit: { 
-      opacity: 0,
-      transition: { duration: 0.3 }
-    }
-  };
+
 
   return (
     <motion.div 
-      className="min-h-screen bg-gradient-to-br from-[#EBF5F7] to-[#D9EDF2]"
+      className="min-h-screen bg-gradient-to-br from-[#FFFDF9] via-[#FAF8F5] to-[#F3ECE3]"
       initial="initial"
       exit="exit"
-      variants={pageVariants}
-      animate={isExiting ? "exit" : "initial"}
+      variants={pageTransitionVariants}
+      animate={isExiting ? "exit" : "enter"}
     >
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm shadow-md sticky top-0 z-10">

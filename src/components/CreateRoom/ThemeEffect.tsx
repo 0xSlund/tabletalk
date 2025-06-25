@@ -92,7 +92,7 @@ export const ThemeEffect: React.FC<ThemeEffectProps> = ({ theme, show, width, he
           recycle={false}
           numberOfPieces={200}
           gravity={0.3}
-          colors={['#f97316', '#fb923c', '#fdba74', '#fed7aa', '#ffedd5']} // Orange theme
+          colors={['#FFFDF9', '#FAF8F5', '#F3ECE3', '#E7DDD1', '#D4C5B5']} // Neutral theme matching background
         />
       </div>
     );

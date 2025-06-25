@@ -31,9 +31,9 @@ export const QuickCreate: React.FC<QuickCreateProps> = ({
   const [foodMode, setFoodMode] = useState<FoodMode>('dining-out');
   const [selectedTheme, setSelectedTheme] = useState<number>(0);
 
-  // Get the background gradient based on the selected theme
+  // Use consistent background across all create room flows
   const getBackgroundGradient = () => {
-    return THEMES[selectedTheme]?.bgGradient || "from-orange-50 via-orange-100/30 to-red-50";
+    return "from-[#FFFDF9] via-[#FAF8F5] to-[#F3ECE3]";
   };
 
   const handleCreateRoom = async () => {
@@ -110,18 +110,18 @@ export const QuickCreate: React.FC<QuickCreateProps> = ({
     >
       {/* Fun decorative elements */}
       <motion.div 
-        className={`absolute top-40 right-10 w-20 h-20 rounded-full ${selectedTheme === 0 ? 'bg-orange-300' : selectedTheme === 1 ? 'bg-blue-300' : 'bg-green-300'} opacity-30 blur-xl`}
+        className={`absolute top-40 right-10 w-20 h-20 rounded-full ${selectedTheme === 0 ? 'bg-gray-200' : selectedTheme === 1 ? 'bg-blue-300' : 'bg-green-300'} opacity-30 blur-xl`}
         {...floatAnimation}
       />
       <motion.div 
-        className={`absolute bottom-40 left-10 w-24 h-24 rounded-full ${selectedTheme === 0 ? 'bg-red-300' : selectedTheme === 1 ? 'bg-purple-300' : 'bg-teal-300'} opacity-30 blur-xl`}
+        className={`absolute bottom-40 left-10 w-24 h-24 rounded-full ${selectedTheme === 0 ? 'bg-gray-300' : selectedTheme === 1 ? 'bg-purple-300' : 'bg-teal-300'} opacity-30 blur-xl`}
         animate={{
           scale: [1, 1.2, 1],
           transition: { duration: 4, repeat: Infinity }
         }}
       />
       <motion.div 
-        className={`absolute top-1/3 left-1/4 w-8 h-8 rounded-full ${selectedTheme === 0 ? 'bg-yellow-300' : selectedTheme === 1 ? 'bg-indigo-300' : 'bg-emerald-300'} opacity-20`}
+        className={`absolute top-1/3 left-1/4 w-8 h-8 rounded-full ${selectedTheme === 0 ? 'bg-gray-200' : selectedTheme === 1 ? 'bg-indigo-300' : 'bg-emerald-300'} opacity-20`}
         animate={{
           y: [0, -30, 0],
           x: [0, 10, 0],
@@ -146,10 +146,10 @@ export const QuickCreate: React.FC<QuickCreateProps> = ({
                 whileHover={{ rotate: 20 }}
                 transition={{ type: "spring", stiffness: 300 }}
               >
-                <div className={`absolute -inset-1.5 bg-gradient-to-r ${selectedTheme === 0 ? 'from-orange-400 to-pink-500' : selectedTheme === 1 ? 'from-blue-400 to-purple-500' : 'from-green-400 to-teal-500'} rounded-full blur-sm opacity-70`}></div>
+                <div className={`absolute -inset-1.5 bg-gradient-to-r ${selectedTheme === 0 ? 'from-gray-400 to-gray-500' : selectedTheme === 1 ? 'from-blue-400 to-purple-500' : 'from-green-400 to-teal-500'} rounded-full blur-sm opacity-70`}></div>
                 <Sparkles className="relative w-6 h-6 text-white" />
               </motion.div>
-              <h1 className={`text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r ${selectedTheme === 0 ? 'from-orange-600 to-red-600' : selectedTheme === 1 ? 'from-blue-600 to-purple-600' : 'from-green-600 to-teal-600'}`}>
+              <h1 className={`text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r ${selectedTheme === 0 ? 'from-gray-600 to-gray-700' : selectedTheme === 1 ? 'from-blue-600 to-purple-600' : 'from-green-600 to-teal-600'}`}>
                 Quick Create
               </h1>
             </div>
@@ -173,7 +173,7 @@ export const QuickCreate: React.FC<QuickCreateProps> = ({
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl shadow-xl p-6 border border-orange-100 relative overflow-hidden"
+          className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 relative overflow-hidden"
         >
           {/* Background pattern */}
           <div className="absolute inset-0 opacity-[0.03] pointer-events-none">

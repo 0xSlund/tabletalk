@@ -2,10 +2,9 @@ import React, { useState, useEffect, useRef, RefObject } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '../lib/store';
 import { ProfileHeader } from './ProfileHeader';
-import { AppHeader } from './AppHeader';
 import { ActionCards } from './ActionCards';
 import { RecentRooms } from './RecentRooms';
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Sun, UtensilsCrossed } from 'lucide-react';
 
 // Define page transition variants
 const pageVariants = {
@@ -16,19 +15,28 @@ const pageVariants = {
   }
 };
 
+// Greeting variants for different times of day
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+};
+
 export function HomeScreen() {
-  const { recentRooms, fetchRecentRooms, auth, signOut } = useAppStore();
+  const { recentRooms, auth, signOut } = useAppStore();
   const [isLoading, setIsLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const isMounted = useRef(true);
   
-  // Custom hook for intersection observer to optimize rendering
+  // Hook to detect when an element is in the viewport for lazy loading
   const useOnScreen = (ref: RefObject<HTMLElement>) => {
-    const [isIntersecting, setIntersecting] = useState(false);
+    const [isIntersecting, setIsIntersecting] = useState(false);
     
     useEffect(() => {
       const observer = new IntersectionObserver(
-        ([entry]) => setIntersecting(entry.isIntersecting)
+        ([entry]) => setIsIntersecting(entry.isIntersecting),
+        { threshold: 0.1 }
       );
       
       if (ref.current) {
@@ -53,6 +61,8 @@ export function HomeScreen() {
         console.log('HomeScreen mounted - forcing reload of recent rooms');
         setIsLoading(true);
         try {
+          // Use getState to avoid function dependency
+          const { fetchRecentRooms } = useAppStore.getState();
           await fetchRecentRooms();
         } catch (error) {
           console.error('Error loading recent rooms on mount:', error);
@@ -64,7 +74,10 @@ export function HomeScreen() {
       }
     };
     
-    loadRecentRooms();
+    // Only load rooms if the user ID exists
+    if (auth.user?.id) {
+      loadRecentRooms();
+    }
     
     // Check for user's preferred color scheme
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -91,7 +104,7 @@ export function HomeScreen() {
       isMounted.current = false;
       darkModeMediaQuery.removeEventListener('change', handleColorSchemeChange);
     };
-  }, []);
+  }, [auth.user?.id]); // Only depend on the user's ID, not the whole user object
 
   useEffect(() => {
     // Save dark mode preference to localStorage
@@ -105,30 +118,7 @@ export function HomeScreen() {
     }
   }, [darkMode]);
 
-  useEffect(() => {
-    const loadRooms = async () => {
-      if (auth.user && isMounted.current) {
-        setIsLoading(true);
-        try {
-          await fetchRecentRooms();
-        } catch (error) {
-          console.error('Error loading recent rooms:', error);
-        } finally {
-          // Only update state if component is still mounted
-          if (isMounted.current) {
-            setIsLoading(false);
-          }
-        }
-      }
-    };
-    
-    loadRooms();
-  }, [auth.user, fetchRecentRooms]);
-
-  const handleNavigate = (tab: string) => {
-    // This function is kept for backward compatibility
-    // but we now prefer URL-based navigation
-  };
+  // Removed handleNavigate function as RecentRooms now handles its own navigation
   
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
@@ -137,28 +127,24 @@ export function HomeScreen() {
   // Find active room for the RecentRooms component
   const activeRoom = recentRooms.find(room => room.isActive);
   
-  // Debug logging for recent rooms
+  // Debug logging for recent rooms (development only)
   useEffect(() => {
-    console.log('HomeScreen - Recent Rooms:', {
-      totalRooms: recentRooms.length,
-      activeRooms: recentRooms.filter(room => room.isActive).length,
-      completedRooms: recentRooms.filter(room => !room.isActive).length,
-      recentRooms: recentRooms.map(r => ({
-        id: r.id,
-        name: r.name,
-        isActive: r.isActive,
-        expiresAt: r.expiresAt
-      }))
-    });
-  }, [recentRooms]);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('HomeScreen - Loaded', recentRooms.length, 'recent rooms');
+    }
+  }, [recentRooms.length]); // Only depend on length
+
+  const getFirstName = (username: string) => {
+    return username?.split(' ')[0] || username || 'Friend';
+  };
 
   return (
-    <motion.div 
-      className={`min-h-screen transition-colors duration-300 ${
+    <motion.div
+      className={`min-h-screen transition-all duration-700 ${
         darkMode 
-          ? 'bg-gradient-to-br from-gray-900 to-gray-800 text-white' 
-          : 'bg-gradient-to-br from-background-peach to-background-cream'
-      }`}
+          ? 'bg-zinc-900 text-white' 
+          : 'bg-gradient-to-br from-[#FFFDF9] via-[#FAF8F5] to-[#F3ECE3]'}
+      `}
       initial="initial"
       exit="exit"
       variants={pageVariants}
@@ -166,7 +152,7 @@ export function HomeScreen() {
       {/* Theme Toggle */}
       <motion.button
         onClick={toggleDarkMode}
-        className={`fixed bottom-24 right-4 z-50 p-3 rounded-full shadow-lg ${
+        className={`fixed bottom-6 right-4 z-50 p-3 rounded-full shadow-lg ${
           darkMode 
             ? 'bg-gray-800 text-yellow-300 border border-gray-700' 
             : 'bg-white text-gray-800 border border-gray-200'
@@ -177,40 +163,89 @@ export function HomeScreen() {
       >
         {darkMode ? <Sun size={20} /> : <Moon size={20} />}
       </motion.button>
-      
 
+      <div className="max-w-6xl mx-auto px-4 pt-8 pb-8 sm:px-6 lg:px-8">
+        {/* Header with TableTalk logo and Profile */}
+        <div className="flex justify-between items-center mb-8">
+          {/* TableTalk Logo - Top Center Left */}
+          <motion.div 
+            className="flex items-center gap-3"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2, duration: 0.6 }}
+          >
+            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg ${
+              darkMode 
+                ? 'bg-white' 
+                : 'bg-gradient-to-br from-orange-400 to-amber-500'
+            }`}>
+              <UtensilsCrossed className={`h-6 w-6 ${
+                darkMode ? 'text-orange-500' : 'text-white'
+              }`} />
+            </div>
+            <div>
+              <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                TableTalk
+              </h1>
+              <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                Dining decisions made easy
+              </p>
+            </div>
+          </motion.div>
 
-      {/* User Profile in Top Right */}
-      <ProfileHeader 
-        user={auth.user} 
-        onSignOut={signOut}
-        onNavigate={handleNavigate}
-        darkMode={darkMode}
-      />
+          {/* Profile Dropdown - Top Center Right */}
+          <ProfileHeader
+            user={auth.user}
+            onSignOut={signOut}
+            darkMode={darkMode}
+          />
+        </div>
 
-      <div className="max-w-5xl mx-auto px-4 pt-8 pb-16 sm:px-6 lg:px-8">
         {/* Accessible screen reader announcements */}
         <div aria-live="polite" id="main-announcer" className="sr-only"></div>
         
-        {/* App Header */}
-        <AppHeader darkMode={darkMode} />
-        
-        {/* Background pattern for visual interest (only in light mode) */}
-        {!darkMode && (
-          <div className="absolute inset-0 z-0 overflow-hidden opacity-5 pointer-events-none">
-            <div className="absolute top-0 left-0 w-full h-full bg-repeat" 
-              style={{ 
-                backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23000000\' fill-opacity=\'0.1\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")',
-                backgroundSize: '60px 60px' 
-              }}
-            ></div>
+        {/* Personalized Greeting Header */}
+        <motion.header 
+          className="mb-12"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <div className="text-center mb-8">
+
+            {/* Personalized greeting */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.6 }}
+              className="max-w-3xl mx-auto"
+            >
+              <h2 className={`text-3xl sm:text-4xl lg:text-5xl font-bold mb-8 pb-2 ${
+                darkMode 
+                  ? 'bg-gradient-to-r from-white via-gray-100 to-gray-200 bg-clip-text text-transparent' 
+                  : 'bg-gradient-to-r from-gray-900 via-gray-800 to-gray-700 bg-clip-text text-transparent'
+              }`}>
+                {getGreeting()}, {getFirstName(auth.user?.username || 'Friend')}!
+              </h2>
+              <p className={`text-lg sm:text-xl ${darkMode ? 'text-gray-300' : 'text-gray-600'} leading-relaxed`}>
+                Ready to eat together again? Create a room or explore new dining options with friends.
+              </p>
+            </motion.div>
           </div>
-        )}
-        
+
+          {/* Decorative divider */}
+          <motion.div 
+            className="h-1 w-32 mx-auto rounded-full bg-gradient-to-r from-orange-400 via-amber-500 to-orange-600"
+            initial={{ width: 0 }}
+            animate={{ width: 128 }}
+            transition={{ delay: 0.6, duration: 0.8 }}
+          />
+        </motion.header>
+
         {/* Main Content with lazy-loaded component sections */}
-        <div className="space-y-12 relative z-10">
+        <div className="space-y-16 relative z-10">
           {/* Primary Action Cards */}
-          <ActionCards onNavigate={handleNavigate} darkMode={darkMode} />
+          <ActionCards darkMode={darkMode} />
           
           {/* Recent Rooms Section with lazy loading */}
           <div ref={recentRoomsRef}>
@@ -219,21 +254,11 @@ export function HomeScreen() {
                 rooms={recentRooms}
                 activeRoom={activeRoom}
                 isLoading={isLoading}
-                onNavigate={handleNavigate}
                 darkMode={darkMode}
               />
             )}
           </div>
         </div>
-
-        <div 
-          className="h-1 w-24 mx-auto rounded-full mb-8"
-          style={{
-            background: darkMode 
-              ? 'linear-gradient(to right, rgba(var(--primary-rgb), 0.6), rgba(var(--primary-rgb), 0.8))'
-              : 'linear-gradient(to right, rgba(var(--primary-rgb), 0.8), rgba(var(--primary-rgb), 1))'
-          }}
-        ></div>
       </div>
     </motion.div>
   );

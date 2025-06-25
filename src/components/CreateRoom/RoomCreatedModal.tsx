@@ -12,6 +12,7 @@ interface RoomCreatedModalProps {
   onNavigateToRoom: () => void;
   autoNavigateDelay?: number;
   theme?: number; // Add theme parameter (0: Food Fiesta, 1: Cozy Gathering, 2: Surprise Me)
+  foodMode?: string; // Add food mode parameter ('dining-out', 'cooking', 'both')
 }
 
 const RoomCreatedModal: React.FC<RoomCreatedModalProps> = ({
@@ -22,10 +23,11 @@ const RoomCreatedModal: React.FC<RoomCreatedModalProps> = ({
   onNavigateToRoom,
   autoNavigateDelay,
   theme = 0, // Default to Food Fiesta theme
+  foodMode, // Food mode from CustomCreate
 }) => {
   const [copied, setCopied] = useState(false);
   const [countdown, setCountdown] = useState(autoNavigateDelay ? Math.floor(autoNavigateDelay / 1000) : 0);
-  const roomUrl = `/active-room`;
+  const roomUrl = `/active-room/${roomCode}`;
   
   // Cozy Gathering star elements
   const [cozyElements, setCozyElements] = useState<Array<{ id: number; top: number; left: number; size: number; delay: number; rotation: number }>>([]);
@@ -72,6 +74,16 @@ const RoomCreatedModal: React.FC<RoomCreatedModalProps> = ({
   
   // Get theme-based colors
   const getHeaderBgColor = () => {
+    // Use food mode colors if available (from CustomCreate)
+    if (foodMode) {
+      switch (foodMode) {
+        case 'cooking': return 'bg-teal-500';
+        case 'dining-out': return 'bg-violet-500';
+        case 'both': return 'bg-orange-500';
+        default: return 'bg-orange-500';
+      }
+    }
+    // Fall back to QuickCreate theme colors
     switch (theme) {
       case 1: return 'bg-blue-500'; // Cozy Gathering
       case 2: return 'bg-green-500'; // Surprise Me
@@ -80,6 +92,16 @@ const RoomCreatedModal: React.FC<RoomCreatedModalProps> = ({
   };
   
   const getHeaderTextColor = () => {
+    // Use food mode colors if available (from CustomCreate)
+    if (foodMode) {
+      switch (foodMode) {
+        case 'cooking': return 'text-teal-100';
+        case 'dining-out': return 'text-violet-100';
+        case 'both': return 'text-orange-100';
+        default: return 'text-orange-100';
+      }
+    }
+    // Fall back to QuickCreate theme colors
     switch (theme) {
       case 1: return 'text-blue-100'; // Cozy Gathering
       case 2: return 'text-green-100'; // Surprise Me
@@ -88,6 +110,16 @@ const RoomCreatedModal: React.FC<RoomCreatedModalProps> = ({
   };
   
   const getIconColor = () => {
+    // Use food mode colors if available (from CustomCreate)
+    if (foodMode) {
+      switch (foodMode) {
+        case 'cooking': return 'text-teal-500';
+        case 'dining-out': return 'text-violet-500';
+        case 'both': return 'text-orange-500';
+        default: return 'text-orange-500';
+      }
+    }
+    // Fall back to QuickCreate theme colors
     switch (theme) {
       case 1: return 'text-blue-500'; // Cozy Gathering
       case 2: return 'text-green-500'; // Surprise Me
@@ -96,6 +128,16 @@ const RoomCreatedModal: React.FC<RoomCreatedModalProps> = ({
   };
   
   const getButtonGradient = () => {
+    // Use food mode colors if available (from CustomCreate)
+    if (foodMode) {
+      switch (foodMode) {
+        case 'cooking': return 'from-teal-500 to-emerald-600';
+        case 'dining-out': return 'from-violet-500 to-purple-600';
+        case 'both': return 'from-orange-500 to-red-500';
+        default: return 'from-orange-500 to-red-500';
+      }
+    }
+    // Fall back to QuickCreate theme colors
     switch (theme) {
       case 1: return 'from-blue-500 to-purple-500'; // Cozy Gathering
       case 2: return 'from-green-500 to-teal-500'; // Surprise Me
@@ -104,6 +146,16 @@ const RoomCreatedModal: React.FC<RoomCreatedModalProps> = ({
   };
   
   const getCountdownTextColor = () => {
+    // Use food mode colors if available (from CustomCreate)
+    if (foodMode) {
+      switch (foodMode) {
+        case 'cooking': return 'text-teal-500';
+        case 'dining-out': return 'text-violet-500';
+        case 'both': return 'text-orange-500';
+        default: return 'text-orange-500';
+      }
+    }
+    // Fall back to QuickCreate theme colors
     switch (theme) {
       case 1: return 'text-blue-500'; // Cozy Gathering
       case 2: return 'text-green-500'; // Surprise Me
@@ -112,6 +164,16 @@ const RoomCreatedModal: React.FC<RoomCreatedModalProps> = ({
   };
   
   const getCopyButtonBg = () => {
+    // Use food mode colors if available (from CustomCreate)
+    if (foodMode) {
+      switch (foodMode) {
+        case 'cooking': return 'bg-teal-500';
+        case 'dining-out': return 'bg-violet-500';
+        case 'both': return 'bg-orange-500';
+        default: return 'bg-orange-500';
+      }
+    }
+    // Fall back to QuickCreate theme colors
     switch (theme) {
       case 1: return 'bg-blue-500'; // Cozy Gathering
       case 2: return 'bg-green-500'; // Surprise Me
@@ -121,6 +183,16 @@ const RoomCreatedModal: React.FC<RoomCreatedModalProps> = ({
   
   // Get theme-based glow effect for the modal
   const getModalGlow = () => {
+    // Use food mode colors if available (from CustomCreate)
+    if (foodMode) {
+      switch (foodMode) {
+        case 'cooking': return 'shadow-[0_0_30px_rgba(20,184,166,0.3)]'; // Teal glow
+        case 'dining-out': return 'shadow-[0_0_30px_rgba(139,92,246,0.3)]'; // Violet glow
+        case 'both': return 'shadow-[0_0_30px_rgba(249,115,22,0.3)]'; // Orange glow
+        default: return 'shadow-[0_0_30px_rgba(249,115,22,0.3)]'; // Orange glow
+      }
+    }
+    // Fall back to QuickCreate theme colors
     switch (theme) {
       case 1: return 'shadow-[0_0_30px_rgba(59,130,246,0.3)]'; // Blue glow for Cozy Gathering
       case 2: return 'shadow-[0_0_30px_rgba(16,185,129,0.3)]'; // Green glow for Surprise Me
@@ -285,7 +357,13 @@ const RoomCreatedModal: React.FC<RoomCreatedModalProps> = ({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className={`fixed inset-0 flex items-center justify-center p-4 z-50 backdrop-blur-sm ${
-          theme === 0 
+          foodMode
+            ? foodMode === 'cooking'
+              ? 'bg-teal-950/30'
+              : foodMode === 'dining-out'
+                ? 'bg-violet-950/30'
+                : 'bg-orange-950/30'
+            : theme === 0 
             ? 'bg-orange-950/30' 
             : theme === 1 
               ? 'bg-blue-950/30' 
@@ -469,7 +547,7 @@ const RoomCreatedModal: React.FC<RoomCreatedModalProps> = ({
                 Back to Main Menu
               </button>
               <Link
-                to="/active-room"
+                to={roomUrl}
                 onClick={(e) => {
                   e.preventDefault();
                   console.log(`Manually navigating to room ${roomCode}`);

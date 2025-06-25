@@ -41,6 +41,13 @@ export interface StepSettingsProps {
   isLoading?: boolean;
   accessControl?: boolean | null;
   setAccessControl?: (control: boolean | null) => void;
+  selectedMeals?: SelectedMeals;
+  setSelectedMeals?: (meals: SelectedMeals) => void;
+  onSectionsCompletionChange?: (completion: {
+    participantAccess: boolean;
+    decisionTimer: boolean;
+    deadlineNotifications: boolean;
+  }) => void;
 }
 
 export interface ParticipantLimitSectionProps {
@@ -63,12 +70,30 @@ export interface TimerSettingsSectionProps {
   setShowHelpTooltip: (tooltip: 'participants' | 'timer' | 'deadline' | 'reminders' | null) => void;
 }
 
+export interface SelectedMeal {
+  name: string;
+  icon: any;
+  color: string;
+  minHour: number;
+  maxHour: number;
+  hour: number;
+  minute: number;
+}
+
+export interface SelectedMeals {
+  breakfast: SelectedMeal;
+  lunch: SelectedMeal;
+  dinner: SelectedMeal;
+}
+
 export interface DeadlineSectionProps {
   deadline: string;
   setDeadline: (deadline: string) => void;
   minDate: string;
   showHelpTooltip: 'participants' | 'timer' | 'deadline' | 'reminders' | null;
   setShowHelpTooltip: (tooltip: 'participants' | 'timer' | 'deadline' | 'reminders' | null) => void;
+  selectedMeals?: SelectedMeals;
+  setSelectedMeals?: (meals: SelectedMeals) => void;
 }
 
 export interface RemindersSectionProps {

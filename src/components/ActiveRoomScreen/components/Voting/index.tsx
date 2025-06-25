@@ -4,6 +4,9 @@ import { useAppStore } from '../../../../lib/store';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRoomContext } from '../../contexts/RoomContext';
 import OlympicResults from './OlympicResults';
+import { NoVotesExpiredModal } from "../NoVotesExpiredModal";
+import { NoOptionsExpiredModal } from "../NoOptionsExpiredModal";
+import { WinnersPodiumModal } from "../WinnersPodiumModal";
 import { supabase } from '../../../../lib/supabase';
 
 // Define the structure for food suggestions
@@ -31,13 +34,17 @@ interface EnhancedRoom {
   votes?: Record<string, string>;
 }
 
-export const Voting: React.FC = () => {
+interface VotingProps {
+  roomExpired: boolean;
+}
+
+export const Voting: React.FC<VotingProps> = ({ roomExpired }) => {
   const { currentRoom } = useAppStore();
   // Access the auth user separately to avoid type errors
   const user = useAppStore.getState().auth.user;
   // Check if we're viewing a completed room from history
   const isViewingCompletedRoom = useAppStore.getState().isViewingCompletedRoom;
-  const { voteForSuggestion, roomExpired } = useRoomContext();
+  const { voteForSuggestion } = useRoomContext();
   const [selectedReaction, setSelectedReaction] = useState<ReactionType>('like');
   const [pendingVote, setPendingVote] = useState<VoteInfo | null>(null);
   const [animateConfirm, setAnimateConfirm] = useState(false);
@@ -48,11 +55,20 @@ export const Voting: React.FC = () => {
   // New state for Olympic results popup
   const [showOlympicResults, setShowOlympicResults] = useState(false);
   
+  // New state for Winners Podium modal
+  const [showWinnersPodiumModal, setShowWinnersPodiumModal] = useState(false);
+  
   // New state for showing real-time vote progress after voting
   const [showVoteProgress, setShowVoteProgress] = useState(false);
   
   // Track if all users have voted in the room
   const [allMembersVoted, setAllMembersVoted] = useState(false);
+  
+  // State for the no votes expired modal
+  const [showNoVotesModal, setShowNoVotesModal] = useState(false);
+  
+  // State for the no options expired modal
+  const [showNoOptionsModal, setShowNoOptionsModal] = useState(false);
   
   // Dummy data for other users' votes - in a real app this would come from your store/database
   const [otherUserVotes, setOtherUserVotes] = useState<Record<string, {reaction: ReactionType, name: string}>>({
@@ -67,6 +83,7 @@ export const Voting: React.FC = () => {
   
   // Add a state for rooms that expired with no votes
   const [isNoVotesState, setIsNoVotesState] = useState(false);
+  const [hasInitializedVotes, setHasInitializedVotes] = useState(false);
   
   // Safely cast current room to our enhanced type to prevent TypeScript errors
   const enhancedRoom = currentRoom as unknown as EnhancedRoom;
@@ -95,130 +112,38 @@ export const Voting: React.FC = () => {
     }
   }, [userVotes, hasVotedOnAll, showOlympicResults]);
   
-  // Show Olympic results when the room is expired
+  // This single, consolidated useEffect will handle all end-of-room scenarios.
   useEffect(() => {
+    // Only run this logic if the room has actually expired.
     if (roomExpired) {
-      console.log('Room expired detected, showing results and podium');
+      console.log('Room expired. Determining which final view to show...');
+      
+      // Always switch to the results view layout.
       setShowResults(true);
-      // Automatically show Olympic results for expired rooms after a short delay for better UX
+
+      const hasSuggestions = suggestions && suggestions.length > 0;
+      // Use the length of the keys of the votes object as a reliable check.
+      const hasVotes = votes && Object.keys(votes).length > 0;
+
+      // Use a short delay to prevent modals from flashing during render.
       setTimeout(() => {
-        setShowOlympicResults(true);
+        if (!hasSuggestions) {
+          // SCENARIO 1: Room expired with NO suggestions.
+          console.log('Showing "No Options" modal.');
+          setShowNoOptionsModal(true);
+        } else if (!hasVotes) {
+          // SCENARIO 2: Room expired with suggestions but NO votes.
+          console.log('Showing "No Votes" modal.');
+          setIsNoVotesState(true); // Flag for the OlympicResults component.
+          setShowNoVotesModal(true);
+        } else {
+          // SCENARIO 3: Room expired with both suggestions and votes.
+          console.log('Showing "Winners Podium" (OlympicResults).');
+          setShowOlympicResults(true);
+        }
       }, 500);
     }
-  }, [roomExpired]);
-  
-  // Initialize state from global state if available (for expired rooms)
-  useEffect(() => {
-    // Check if we have global state from the expiredRoomHandler
-    // @ts-ignore - Accessing dynamic property
-    const globalState = window?.__tabletalk_state || {};
-    
-    if (globalState.showVotingResults) {
-      console.log('Using global state for voting component', globalState);
-      setShowResults(true);
-    }
-    
-    if (globalState.showOlympicResults) {
-      // Show Olympic results with a small delay for better UX
-      setTimeout(() => {
-        setShowOlympicResults(true);
-      }, 300);
-    }
-    
-    if (globalState.userVotesReactions) {
-      // Convert reactions to our ReactionType
-      const typedReactions: Record<string, ReactionType> = {};
-      Object.entries(globalState.userVotesReactions).forEach(([suggestionId, reaction]) => {
-        typedReactions[suggestionId] = reaction as ReactionType;
-      });
-      setUserVotes(typedReactions);
-    }
-    
-    if (globalState.otherUserVotesData) {
-      // Convert to our expected format
-      const typedOtherVotes: Record<string, {reaction: ReactionType, name: string}> = {};
-      Object.entries(globalState.otherUserVotesData).forEach(([userId, data]) => {
-        typedOtherVotes[userId] = {
-          reaction: (data as any).reaction as ReactionType,
-          name: (data as any).name
-        };
-      });
-      setOtherUserVotes(typedOtherVotes);
-    }
-    
-    if (globalState.votesMap) {
-      setVoteMapping(globalState.votesMap);
-    }
-    
-    // Set no votes state if the room expired with no votes
-    if (globalState.noVotes === true) {
-      console.log('Room expired with no votes, showing no votes state');
-      setIsNoVotesState(true);
-    }
-  }, []);
-  
-  // Enhanced effect for viewing completed rooms
-  useEffect(() => {
-    // Prioritize the roomExpired flag from context, then fallback to isViewingCompletedRoom
-    const shouldShowResults = roomExpired || isViewingCompletedRoom || 
-      // @ts-ignore - Accessing dynamic property
-      !!(window?.__tabletalk_state?.roomExpired);
-    
-    if (shouldShowResults) {
-      console.log('Viewing completed/expired room - suggestions:', suggestions.length, 'votes:', Object.keys(userVotes).length);
-      
-      // Ensure we show results view
-      setShowResults(true);
-      
-      // Check if this is a no votes state room
-      const isNoVotes = isNoVotesState || 
-        // @ts-ignore - Accessing dynamic property 
-        window?.__tabletalk_state?.noVotes === true;
-      
-      // Make sure we have user votes and suggestions before showing Olympic results
-      const hasVotesData = Object.keys(votes).length > 0 || Object.keys(userVotes).length > 0;
-      
-      // Show Olympic results if we have votes data OR if it's a no votes state
-      if ((suggestions.length > 0 && hasVotesData) || isNoVotes) {
-        console.log('Data ready for Olympic results in completed room');
-        // Show Olympic results after a brief delay for better UX
-        setTimeout(() => {
-          console.log('Showing Olympic results with', suggestions.length, 'suggestions');
-          setShowOlympicResults(true);
-        }, 500);
-      } else {
-        console.log('Waiting for data to load in completed room');
-        // Attempt to load votes if they aren't already loaded
-        if (user && currentRoom?.id && !hasVotesData && !isNoVotes) {
-          const { fetchVotesForRoom } = useAppStore.getState();
-          fetchVotesForRoom(currentRoom.id);
-        }
-        
-        // Setup a retry mechanism to wait for data to load
-        const checkForData = setInterval(() => {
-          if (suggestions.length > 0) {
-            console.log('Data loaded, showing Olympic results');
-            setShowResults(true);
-            setShowOlympicResults(true);
-            clearInterval(checkForData);
-          }
-        }, 500);
-        
-        // Clear interval after 5 seconds to prevent infinite checking
-        setTimeout(() => {
-          clearInterval(checkForData);
-        }, 5000);
-      }
-      
-      // Reset the flag after using it (only if it's from isViewingCompletedRoom)
-      if (isViewingCompletedRoom) {
-        useAppStore.setState(state => ({
-          ...state,
-          isViewingCompletedRoom: false
-        }));
-      }
-    }
-  }, [isViewingCompletedRoom, roomExpired, suggestions.length, userVotes, votes, currentRoom?.id, user, isNoVotesState]);
+  }, [roomExpired, suggestions.length, votes]); // Dependencies are now clean and reactive.
   
   // Initialize user votes from existing votes in the room
   useEffect(() => {
@@ -245,8 +170,9 @@ export const Voting: React.FC = () => {
     // Get existing votes
     const existingVotes = currentRoom?.votes || {};
     
-    // Map votes to the suggestions
-    if (user && currentRoom?.id) {
+    // Map votes to the suggestions - only initialize once per room
+    if (user && currentRoom?.id && !hasInitializedVotes) {
+      setHasInitializedVotes(true);
       console.log('Initializing votes for room:', currentRoom.id, 'with votes map:', existingVotes);
       
       const userVoteMapping: Record<string, ReactionType> = {};
@@ -320,7 +246,7 @@ export const Voting: React.FC = () => {
           } else {
             console.log('No food votes found for room:', currentRoom.id);
             
-            // If no votes found, ensure we get the votes from the store
+            // If no votes found, ensure we get the votes from the store using getState
             const { fetchVotesForRoom } = useAppStore.getState();
             await fetchVotesForRoom(currentRoom.id);
           }
@@ -331,7 +257,12 @@ export const Voting: React.FC = () => {
       
       fetchVotes();
     }
-  }, [currentRoom?.id, user]);
+  }, [currentRoom?.id, user?.id, hasInitializedVotes]); // Only depend on primitive values
+  
+  // Reset initialization flag when room changes
+  useEffect(() => {
+    setHasInitializedVotes(false);
+  }, [currentRoom?.id]);
   
   // Calculate vote counts based on vote mappings - separate function for reuse
   const calculateVoteCounts = (voteMap: Record<string, string>) => {
@@ -370,8 +301,10 @@ export const Voting: React.FC = () => {
   
   // Function to handle voting
   const handleVote = async (suggestionId: string, reaction: ReactionType) => {
-    if (!user || !suggestionId) {
-      console.error('Cannot vote: missing user or suggestion ID');
+    if (!user || !suggestionId || roomExpired) {
+      if (roomExpired) {
+        console.warn('Attempted to vote in an expired room.');
+      }
       return;
     }
     
@@ -427,12 +360,7 @@ export const Voting: React.FC = () => {
         // Could add error feedback here
       } else {
         console.log('Vote saved successfully to database');
-        
-        // Refresh votes from the database to ensure we have the latest state
-        const { fetchVotesForRoom } = useAppStore.getState();
-        if (currentRoom.id) {
-          await fetchVotesForRoom(currentRoom.id);
-        }
+        // Don't refresh votes immediately - the UI is already updated optimistically
       }
     } catch (error) {
       console.error('Error saving vote:', error);
@@ -808,57 +736,19 @@ export const Voting: React.FC = () => {
           </div>
         </motion.div>
         
-        {/* No votes state */}
-        {(isNoVotesState && totalVotes === 0 && Object.keys(userVotes).length === 0) || 
-         (totalVotes === 0 && roomExpired && Object.keys(voteMapping).length === 0) ? (
+        {/* Show loading when waiting for modal to appear */}
+        {((suggestions.length === 0 && roomExpired) || 
+          (totalVotes === 0 && roomExpired && suggestions.length > 0)) ? (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             className="bg-white rounded-xl p-8 shadow-md text-center mb-6"
           >
-            <XCircle size={48} className="text-gray-400 mx-auto mb-3" />
-            <h3 className="text-xl font-medium text-gray-700 mb-2">No Votes Were Cast</h3>
-            <p className="text-gray-500 mb-6">
-              This room expired before any votes were recorded. Next time, make sure to vote before the timer runs out!
+            <Clock size={48} className="text-gray-400 mx-auto mb-3" />
+            <h3 className="text-xl font-medium text-gray-700 mb-2">Room Ended</h3>
+            <p className="text-gray-500">
+              Preparing room summary...
             </p>
-            
-            {/* Display suggestions that were available */}
-            {suggestions.length > 0 ? (
-              <div>
-                <h4 className="text-md font-medium text-gray-600 mb-3">Available Options:</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {suggestions.map((suggestion, index) => (
-                    <div 
-                      key={suggestion.id}
-                      className="bg-gray-50 border border-gray-200 rounded-lg p-3 flex items-center gap-3"
-                    >
-                      <div className="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                        <span className="text-xl">{suggestion.emoji || '🍽️'}</span>
-                      </div>
-                      <div className="flex-grow">
-                        <p className="font-medium text-gray-800">{suggestion.name}</p>
-                        {suggestion.description && (
-                          <p className="text-xs text-gray-500 line-clamp-1">{suggestion.description}</p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <p className="text-gray-500">No food options were suggested in this room.</p>
-            )}
-            
-            <motion.button
-              onClick={() => setShowOlympicResults(true)}
-              className="mt-6 py-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 flex items-center justify-center gap-2 w-full mx-auto max-w-sm"
-              whileHover={{ y: -2, scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-            >
-              <Trophy size={18} />
-              Show Summary Podium
-            </motion.button>
           </motion.div>
         ) : (
           <div className="space-y-6">
@@ -1100,7 +990,7 @@ export const Voting: React.FC = () => {
             
             <div className="text-center mt-6 flex flex-col justify-center gap-4">
               <motion.button
-                onClick={() => setShowOlympicResults(true)}
+                onClick={() => setShowWinnersPodiumModal(true)}
                 className="py-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 flex items-center justify-center gap-2 w-full"
                 whileHover={{ y: -2, scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
@@ -1474,6 +1364,33 @@ export const Voting: React.FC = () => {
           />
         )}
       </AnimatePresence>
+
+      {/* No Votes Expired Modal */}
+      <NoVotesExpiredModal
+        isOpen={showNoVotesModal}
+        onClose={() => setShowNoVotesModal(false)}
+        roomName={currentRoom?.name || 'Unknown Room'}
+        suggestions={suggestions}
+      />
+
+      {/* No Options Expired Modal */}
+      <NoOptionsExpiredModal
+        isOpen={showNoOptionsModal}
+        onClose={() => setShowNoOptionsModal(false)}
+        roomName={currentRoom?.name || 'Unknown Room'}
+      />
+
+      {/* Winners Podium Modal */}
+      <WinnersPodiumModal
+        isOpen={showWinnersPodiumModal}
+        onClose={() => setShowWinnersPodiumModal(false)}
+        roomName={currentRoom?.name || 'Unknown Room'}
+        suggestions={sortedSuggestions}
+        voteCounts={voteCounts}
+        totalVotes={totalVotes}
+        userVotes={userVotes}
+        otherUserVotes={otherUserVotes}
+      />
     </div>
   );
 };

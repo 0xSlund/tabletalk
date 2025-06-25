@@ -1,32 +1,33 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Users, Clock, Trophy, MessageCircle, ChevronLeft, ChevronRight, 
+  Users, Clock, Trophy, MessageCircle, 
   Loader2, UserPlus, Utensils, Coffee, Pizza, Sandwich, IceCream,
   Apple, Beef, Cake, Cherry, Cookie, Croissant, Egg, Fish, Grape,
-  Popcorn, Soup, Wine
+  Popcorn, Soup, Wine, ChevronLeft, ChevronRight, History
 } from 'lucide-react';
 import { formatTimeRemaining } from '../lib/utils';
 import { LoadingDots, EmptyState } from './SkeletonLoader';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 interface RecentRoomsProps {
   rooms: any[];
   activeRoom?: any; // New prop for the active room
   isLoading: boolean;
-  onNavigate: (tab: string) => void;
   darkMode?: boolean;
 }
 
-export function RecentRooms({ rooms, activeRoom, isLoading, onNavigate, darkMode = false }: RecentRoomsProps) {
-  const [currentPage, setCurrentPage] = useState(0);
+export function RecentRooms({ rooms, activeRoom, isLoading, darkMode = false }: RecentRoomsProps) {
+  const navigate = useNavigate();
   const [currentIcon, setCurrentIcon] = useState(0);
+  const [currentPage, setCurrentPage] = useState(0);
   const foodIcons = [
     Pizza, Utensils, Coffee, IceCream, Sandwich, 
     Apple, Cake, Cherry, Cookie, Croissant, 
     Egg, Fish, Grape, Popcorn, Soup, Wine
   ];
   const roomsPerPage = 3;
+  const maxRooms = 12; // Show last 12 rooms total
   
   // Filter out the active room from the rooms list if it exists and was passed separately
   // Only filter it out if we're going to show it separately at the top
@@ -34,20 +35,19 @@ export function RecentRooms({ rooms, activeRoom, isLoading, onNavigate, darkMode
     ? rooms.filter(room => room.id !== activeRoom.id) 
     : rooms;
   
-  const totalPages = Math.max(1, Math.ceil(filteredRooms.length / roomsPerPage));
+  // Take only the last 12 rooms and paginate them
+  const recentRooms = filteredRooms.slice(0, maxRooms);
+  const totalPages = Math.ceil(recentRooms.length / roomsPerPage);
+  const currentRooms = recentRooms.slice(currentPage * roomsPerPage, (currentPage + 1) * roomsPerPage);
   
-  // Ensure currentPage is within bounds
-  useEffect(() => {
-    if (currentPage >= totalPages && totalPages > 0) {
-      setCurrentPage(totalPages - 1);
-    }
-  }, [totalPages, currentPage]);
+  // Navigation functions
+  const goToPreviousPage = () => {
+    setCurrentPage(prev => Math.max(0, prev - 1));
+  };
   
-  // Get current page of rooms
-  const currentRooms = filteredRooms.slice(
-    currentPage * roomsPerPage, 
-    (currentPage + 1) * roomsPerPage
-  );
+  const goToNextPage = () => {
+    setCurrentPage(prev => Math.min(totalPages - 1, prev + 1));
+  };
   
   // Ref for the section to track visibility
   const sectionRef = useRef<HTMLElement>(null);
@@ -113,26 +113,16 @@ export function RecentRooms({ rooms, activeRoom, isLoading, onNavigate, darkMode
     }
   };
 
-  const goToNextPage = () => {
-    if (currentPage < totalPages - 1) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
 
-  const goToPrevPage = () => {
-    if (currentPage > 0) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
   
   // Screen reader announcements
   useEffect(() => {
     if (!isLoading && rooms.length > 0 && !hasAnnounced) {
-      const announcement = `${rooms.length} recent rooms loaded, showing page ${currentPage + 1} of ${totalPages}`;
+      const announcement = `${rooms.length} recent rooms loaded, showing ${Math.min(rooms.length, 3)} rooms`;
       document.getElementById('sr-announcement')?.setAttribute('aria-label', announcement);
       setHasAnnounced(true);
     }
-  }, [isLoading, rooms.length, currentPage, totalPages, hasAnnounced]);
+  }, [isLoading, rooms.length, hasAnnounced]);
 
   // Rotate through food icons with variable timing
   useEffect(() => {
@@ -166,33 +156,18 @@ export function RecentRooms({ rooms, activeRoom, isLoading, onNavigate, darkMode
     };
   }, []);
 
-  // Debug log the rooms
+  // Debug log the rooms (only in development)
   useEffect(() => {
-    console.log('RecentRooms received:', { 
-      roomsLength: rooms.length, 
-      rooms: rooms.map(r => ({ id: r.id, name: r.name, isActive: r.isActive })),
-      activeRoom: activeRoom?.id
-    });
-  }, [rooms, activeRoom]);
-
-  // Debug logging
-  useEffect(() => {
-    console.log('RecentRooms Component:', {
-      receivedRooms: rooms.length,
-      filteredRooms: filteredRooms.length,
-      currentPage,
-      totalPages,
-      roomsPerPage,
-      displayedRooms: currentRooms.length,
-      hasActiveRoom: !!activeRoom
-    });
-  }, [rooms, filteredRooms, currentPage, totalPages, currentRooms, activeRoom]);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('RecentRooms received:', rooms.length, 'rooms');
+    }
+  }, [rooms.length]); // Only depend on length to avoid excessive logging
 
   // Function to render a room card - extracted to avoid code duplication
   const renderRoomCard = (room, isActiveHighlighted = false) => (
     <Link 
       key={room.id} 
-      to="/active-room"
+      to={room.code ? `/active-room/${room.code}` : "/active-room"}
       className="block"
       aria-label={`${room.name}, ${room.isActive ? 'Active room' : 'Completed room'}`}
       onClick={() => {
@@ -207,12 +182,22 @@ export function RecentRooms({ rooms, activeRoom, isLoading, onNavigate, darkMode
         whileHover="hover"
         whileTap="tap"
         className={`
-          rounded-xl p-4 sm:p-5 transition-all text-left relative overflow-hidden cursor-pointer border border-black border-opacity-[0.06] shadow-md
-          ${isActiveHighlighted
+          rounded-xl p-4 sm:p-5 transition-all text-left relative overflow-hidden cursor-pointer shadow-md
+          ${darkMode 
+            ? `border border-gray-700 ${
+                isActiveHighlighted
+                  ? 'bg-gradient-to-br from-primary/15 to-primary/5 border-primary/20'
+                  : room.isActive 
+                    ? 'bg-gradient-to-br from-primary/20 to-primary/10 border-primary/30' 
+                    : 'bg-gray-800'
+              }`
+            : `border border-black border-opacity-[0.06] ${
+                isActiveHighlighted
             ? 'bg-gradient-to-br from-primary/15 to-primary/5 border-primary/20'
             : room.isActive 
               ? 'bg-gradient-to-br from-primary to-primary bg-opacity-10 from-opacity-10 to-opacity-5' 
               : 'bg-white'
+              }`
           }
         `}
         tabIndex={0}
@@ -220,7 +205,7 @@ export function RecentRooms({ rooms, activeRoom, isLoading, onNavigate, darkMode
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            window.location.href = '/active-room';
+            window.location.href = room.code ? `/active-room/${room.code}` : '/active-room';
           }
         }}
       >
@@ -236,7 +221,7 @@ export function RecentRooms({ rooms, activeRoom, isLoading, onNavigate, darkMode
         
         <div className="flex flex-col h-full relative z-10">
           <div className="flex justify-between items-start mb-2">
-            <h3 className="font-semibold text-gray-800 line-clamp-1">{room.name}</h3>
+            <h3 className={`font-semibold line-clamp-1 ${darkMode ? 'text-white' : 'text-gray-800'}`}>{room.name}</h3>
             {room.isActive ? (
               <div className="relative">
                 <MessageCircle className="w-5 h-5 text-primary" />
@@ -248,7 +233,11 @@ export function RecentRooms({ rooms, activeRoom, isLoading, onNavigate, darkMode
           </div>
           
           <div className="flex-grow">
-            <div className="inline-flex items-center bg-black bg-opacity-5 px-2 py-1 rounded-full text-xs text-gray-600 mb-2">
+            <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs mb-2 ${
+              darkMode 
+                ? 'bg-gray-700 text-gray-300' 
+                : 'bg-black bg-opacity-5 text-gray-600'
+            }`}>
               <Users className="w-3 h-3 mr-1" />
               <span>{room.participants} participant{room.participants !== 1 ? 's' : ''}</span>
             </div>
@@ -272,7 +261,7 @@ export function RecentRooms({ rooms, activeRoom, isLoading, onNavigate, darkMode
                   }
                 </span>
               ) : (
-                <span className="text-gray-500">
+                <span className={darkMode ? 'text-gray-400' : 'text-gray-500'}>
                   Created {room.createdAt}
                 </span>
               )}
@@ -284,57 +273,85 @@ export function RecentRooms({ rooms, activeRoom, isLoading, onNavigate, darkMode
   );
 
   return (
-    <section ref={sectionRef} aria-labelledby="recent-rooms" className="border-t border-gray-100 pt-8">
+    <section ref={sectionRef} aria-labelledby="recent-rooms" className={`pt-8 ${darkMode ? 'border-t border-gray-700' : 'border-t border-gray-100'}`}>
       <div aria-live="polite" id="sr-announcement" className="sr-only"></div>
       
       <div className="flex items-center justify-between mb-6 px-1">
-        <h2 id="recent-rooms" className="text-xl font-semibold text-gray-800 flex items-center">
+        <h2 id="recent-rooms" className={`text-xl font-semibold flex items-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>
           <Clock className="w-5 h-5 mr-2 text-primary" />
           Recent Rooms
-          {rooms.length > 0 && (
-            <span className="ml-2 text-sm font-normal text-gray-500">
-              ({rooms.length})
-            </span>
+          {!isLoading && rooms.length > roomsPerPage && (
+            <button
+              onClick={() => navigate('/history')}
+              className={`ml-4 flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                darkMode 
+                  ? 'text-blue-400 hover:text-blue-300 hover:bg-gray-800' 
+                  : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
+              }`}
+            >
+              <History className="w-4 h-4" />
+              View all rooms
+            </button>
           )}
         </h2>
         
-        {isLoading && (
-          <div className="flex items-center gap-2 text-gray-500">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span className="text-sm">Loading rooms...</span>
+        {!isLoading && totalPages > 1 && (
+          <div className="flex items-center gap-2">
+            <motion.button
+              onClick={goToPreviousPage}
+              disabled={currentPage === 0}
+              className={`p-2 rounded-lg transition-all ${
+                currentPage === 0
+                  ? darkMode 
+                    ? 'text-gray-600 cursor-not-allowed' 
+                    : 'text-gray-300 cursor-not-allowed'
+                  : darkMode
+                    ? 'text-gray-300 hover:text-white hover:bg-gray-700'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+              }`}
+              whileHover={currentPage > 0 ? { scale: 1.05 } : {}}
+              whileTap={currentPage > 0 ? { scale: 0.95 } : {}}
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </motion.button>
+            
+            <span className={`text-sm px-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              {currentPage + 1} of {totalPages}
+            </span>
+            
+            <motion.button
+              onClick={goToNextPage}
+              disabled={currentPage === totalPages - 1}
+              className={`p-2 rounded-lg transition-all ${
+                currentPage === totalPages - 1
+                  ? darkMode 
+                    ? 'text-gray-600 cursor-not-allowed' 
+                    : 'text-gray-300 cursor-not-allowed'
+                  : darkMode
+                    ? 'text-gray-300 hover:text-white hover:bg-gray-700'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+              }`}
+              whileHover={currentPage < totalPages - 1 ? { scale: 1.05 } : {}}
+              whileTap={currentPage < totalPages - 1 ? { scale: 0.95 } : {}}
+            >
+              <ChevronRight className="w-5 h-5" />
+            </motion.button>
           </div>
         )}
         
-        {totalPages > 1 && (
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={goToPrevPage}
-              disabled={currentPage === 0}
-              className={`p-2 rounded-full ${currentPage === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-100'}`}
-              aria-label="Previous page"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <span className="text-sm text-gray-500" aria-live="polite">
-              {currentPage + 1} / {totalPages}
-            </span>
-            <button 
-              onClick={goToNextPage}
-              disabled={currentPage >= totalPages - 1}
-              className={`p-2 rounded-full ${currentPage >= totalPages - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-100'}`}
-              aria-label="Next page"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
+        {isLoading && rooms.length === 0 && (
+          <div className={`flex items-center gap-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span className="text-sm">Loading rooms...</span>
           </div>
         )}
       </div>
       
       {isLoading && rooms.length === 0 ? (
-        <div className="bg-white rounded-xl p-8 shadow-md">
+        <div className={`rounded-xl p-8 shadow-md ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
           <div className="flex flex-col items-center space-y-4">
             <LoadingDots />
-            <p className="text-gray-500">Loading your recent rooms...</p>
+            <p className={darkMode ? 'text-gray-400' : 'text-gray-500'}>Loading your recent rooms...</p>
           </div>
         </div>
       ) : rooms.length === 0 ? (
@@ -354,13 +371,13 @@ export function RecentRooms({ rooms, activeRoom, isLoading, onNavigate, darkMode
           {/* First render the active room at the top if it exists */}
           {activeRoom && renderRoomCard(activeRoom, true)}
           
-          {/* Then render all other rooms */}
+          {/* Then render all other rooms from current page */}
           {currentRooms.map(room => renderRoomCard(room))}
           
           {/* If no rooms are displayed after filtering, show a message */}
-          {filteredRooms.length === 0 && !activeRoom && (
-            <div className="col-span-full p-6 bg-white rounded-xl shadow-sm text-center">
-              <p className="text-gray-500">No additional rooms to display.</p>
+          {recentRooms.length === 0 && !activeRoom && (
+            <div className={`col-span-full p-6 rounded-xl shadow-sm text-center ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+              <p className={darkMode ? 'text-gray-400' : 'text-gray-500'}>No additional rooms to display.</p>
             </div>
           )}
         </motion.div>

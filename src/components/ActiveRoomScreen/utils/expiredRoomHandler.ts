@@ -76,7 +76,9 @@ export const handleExpiredRoom = async (roomId: string): Promise<boolean> => {
       // Continue anyway, we might not have votes
     }
     
-    console.log('Fetched votes for expired room:', allVotes);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Fetched votes for expired room:', allVotes?.length || 0, 'votes');
+    }
     
     // 2. Create vote mappings
     const votesMap: Record<string, string> = {};
@@ -144,6 +146,8 @@ export const handleExpiredRoom = async (roomId: string): Promise<boolean> => {
     
     // Determine if there are actually any votes cast
     const hasVotes = (allVotes && allVotes.length > 0) || Object.keys(userVotesReactions).length > 0;
+    // Determine if there are any options/suggestions
+    const hasOptions = mergedSuggestions.length > 0;
     
     if (window) {
       // @ts-ignore - Adding dynamic properties to window for components to access
@@ -155,22 +159,22 @@ export const handleExpiredRoom = async (roomId: string): Promise<boolean> => {
         otherUserVotesData,
         votesMap,
         roomExpired: true,
-        // Only set noVotes to true if there are actually no votes
+        // Set flags for different scenarios
         noVotes: !hasVotes,
+        noOptions: !hasOptions,
         suggestions: mergedSuggestions
       };
     }
     
-    // 5. Log detailed information for debugging
-    console.log('Updated expired room data:', {
-      votesMap,
-      userVotesReactions,
-      otherUserVotesData,
-      totalVotes: allVotes?.length || 0,
-      hasVotes,
-      isViewingCompletedRoom: true,
-      suggestions: mergedSuggestions
-    });
+    // 5. Log summary information for debugging
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Expired room processed:', {
+        totalVotes: allVotes?.length || 0,
+        totalSuggestions: mergedSuggestions.length,
+        hasVotes,
+        hasOptions
+      });
+    }
     
     return true;
   } catch (error) {

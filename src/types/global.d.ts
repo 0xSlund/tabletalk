@@ -9,6 +9,7 @@ interface TabletalkState {
   votesBySuggestion?: Record<string, { count: number, userIds: string[] }>;
   roomExpired?: boolean;
   noVotes?: boolean;
+  noOptions?: boolean;
   suggestions?: any[];
   [key: string]: any;
 }

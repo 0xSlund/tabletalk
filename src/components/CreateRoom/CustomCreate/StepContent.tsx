@@ -53,6 +53,16 @@ interface StepContentProps {
     cuisineTypes: boolean;
     cookingOptions: boolean;
   }) => void;
+  accessControl?: boolean | null;
+  setAccessControl?: (control: boolean | null) => void;
+  selectedMeals?: any;
+  setSelectedMeals?: (meals: any) => void;
+  onSectionsCompletionChange?: (completion: {
+    participantAccess: boolean;
+    decisionTimer: boolean;
+    deadlineNotifications: boolean;
+  }) => void;
+  onNavigateToStep?: (step: number) => void;
 }
 
 export function StepContent({
@@ -93,7 +103,13 @@ export function StepContent({
   foodMode,
   setFoodMode,
   completedSections,
-  setCompletedSections
+  setCompletedSections,
+  accessControl,
+  setAccessControl,
+  selectedMeals,
+  setSelectedMeals,
+  onSectionsCompletionChange,
+  onNavigateToStep
 }: StepContentProps) {
   // Animation variants with smoother transition
   const pageVariants = {
@@ -166,6 +182,11 @@ export function StepContent({
             reminders={reminders}
             setReminders={setReminders}
             isLoading={loading}
+            accessControl={accessControl}
+            setAccessControl={setAccessControl}
+            selectedMeals={selectedMeals}
+            setSelectedMeals={setSelectedMeals}
+            onSectionsCompletionChange={onSectionsCompletionChange}
           />
         );
       case 3:
@@ -188,6 +209,10 @@ export function StepContent({
             customDuration={customDuration}
             durationUnit={durationUnit}
             reminders={reminders}
+            roomName={roomName}
+            selectedCuisines={selectedCuisines}
+            foodMode={foodMode}
+            onNavigateToStep={onNavigateToStep}
           />
         );
       default:

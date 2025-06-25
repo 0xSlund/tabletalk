@@ -4,14 +4,20 @@ import { useAppStore } from '../../../../lib/store';
 import { formatTime } from '../../utils/formatters';
 import { supabase } from '../../../../lib/supabase';
 import { motion } from 'framer-motion';
+import { getThemeColors } from '../../utils/themeUtils';
+import { WinnersPodiumModal } from '../WinnersPodiumModal';
 
 export const RoomSidebar: React.FC = () => {
-  const { currentRoom, fetchUserProfile } = useAppStore();
+  const { currentRoom } = useAppStore();
+  const theme = getThemeColors(currentRoom?.foodMode);
   const [codeCopied, setCodeCopied] = useState(false);
   const [showShareOptions, setShowShareOptions] = useState(false);
   const [isRoomExpired, setIsRoomExpired] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [initialTimeTotal, setInitialTimeTotal] = useState(0);
+  const [showWinnersPodium, setShowWinnersPodium] = useState(false);
+  const [voteCounts, setVoteCounts] = useState<Record<string, number>>({});
+  const [totalVotes, setTotalVotes] = useState(0);
   const shareOptionsRef = useRef<HTMLDivElement>(null);
   
   // Collapsible sections state for mobile
@@ -24,24 +30,25 @@ export const RoomSidebar: React.FC = () => {
   const refreshParticipantProfiles = async () => {
     if (!currentRoom) return;
     
+    // Use getState to avoid function dependency
+    const { fetchUserProfile } = useAppStore.getState();
+    
     // Update each participant's profile
     currentRoom.participants.forEach(participant => {
       fetchUserProfile(participant.id);
     });
   };
   
-  // Refresh participant profiles on initial render and periodically
+  // Refresh participant profiles only when room changes - remove polling interval
   useEffect(() => {
     if (!currentRoom) return;
     
-    // Refresh immediately on mount
+    // Refresh immediately on mount or room change
     refreshParticipantProfiles();
     
-    // Then refresh every 30 seconds
-    const intervalId = setInterval(refreshParticipantProfiles, 30000);
-    
-    return () => clearInterval(intervalId);
-  }, [currentRoom]);
+    // Remove the 30-second polling interval to prevent excessive requests
+    // Only refresh when the room actually changes
+  }, [currentRoom?.id]); // Only depend on room ID
   
   // Effect to handle time calculation
   useEffect(() => {
@@ -58,13 +65,16 @@ export const RoomSidebar: React.FC = () => {
     // If total time is extremely short or invalid, use a reasonable default
     const validTotalDuration = totalDuration > 60 ? totalDuration : 1800; // Default to 30 minutes
     
-    console.log(`Timer calculation: Expires at ${new Date(expiresAt).toISOString()}, time left: ${timeLeft}s, total duration: ${validTotalDuration}s`);
+    // Only log timer calculation in development and when room first loads
+    if (process.env.NODE_ENV === 'development' && timeLeft > 0) {
+      console.log(`Timer initialized: ${timeLeft}s remaining`);
+    }
     
     setTimeRemaining(timeLeft);
     setInitialTimeTotal(validTotalDuration);
     
     setIsRoomExpired(timeLeft <= 0 || currentRoom.isActive === false);
-  }, [currentRoom]);
+  }, [currentRoom?.id, currentRoom?.expiresAt, currentRoom?.createdAt, currentRoom?.isActive]);
   
   // Effect to handle clicks outside of share options dropdown
   useEffect(() => {
@@ -85,7 +95,7 @@ export const RoomSidebar: React.FC = () => {
     // Calculate percentage of time remaining
     const percentageRemaining = (seconds / initialTimeTotal) * 100;
     
-    console.log(`Timer percentage: ${percentageRemaining.toFixed(1)}% (${seconds}s / ${initialTimeTotal}s)`);
+    // Remove verbose timer percentage logging
     
     if (percentageRemaining > 50) {
       return '#22C55E'; // Green for > 50% time remaining
@@ -113,16 +123,13 @@ export const RoomSidebar: React.FC = () => {
         setIsRoomExpired(true);
         clearInterval(timerInterval);
         
-        // When the timer expires naturally, make sure we trigger the expired room handling
-        if (currentRoom.id) {
-          const { handleExpiredRoom } = require('../../utils/expiredRoomHandler');
-          handleExpiredRoom(currentRoom.id);
-        }
+        // Don't call handleExpiredRoom here since it's already being handled in RoomContext
+        // This prevents duplicate handling of expired rooms
       }
     }, 1000);
     
     return () => clearInterval(timerInterval);
-  }, [currentRoom, isRoomExpired]);
+  }, [currentRoom?.id, currentRoom?.expiresAt, isRoomExpired]);
   
   // Function to handle copying the room code
   const handleCopyRoomCode = () => {
@@ -200,13 +207,38 @@ export const RoomSidebar: React.FC = () => {
     return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
   };
   
+  // Calculate vote counts for winners podium
+  useEffect(() => {
+    if (!currentRoom?.suggestions) {
+      setVoteCounts({});
+      setTotalVotes(0);
+      return;
+    }
+
+    // Get vote data from global state or current room
+    const globalState = (window as any).__tabletalk_state;
+    const voteMapping = globalState?.votesMap || currentRoom?.votes || {};
+    
+    // Initialize counts for each suggestion
+    const counts = currentRoom.suggestions.reduce((acc: Record<string, number>, suggestion) => {
+      acc[suggestion.id] = 0;
+      return acc;
+    }, {});
+
+    // Count votes based on the vote mapping
+    Object.entries(voteMapping).forEach(([userId, suggestionId]) => {
+      if (counts[suggestionId as string] !== undefined) {
+        counts[suggestionId as string]++;
+      }
+    });
+
+    setVoteCounts(counts);
+    setTotalVotes(Object.values(counts).reduce((sum, count) => sum + count, 0));
+  }, [currentRoom?.suggestions, currentRoom?.votes, currentRoom?.id]);
+
   // Function to view the winners podium
   const handleViewWinnersPodium = () => {
-    // Set the flag to show Olympic results
-    useAppStore.setState(state => ({
-      ...state,
-      isViewingCompletedRoom: true
-    }));
+    setShowWinnersPodium(true);
   };
   
   if (!currentRoom) return null;
@@ -220,8 +252,8 @@ export const RoomSidebar: React.FC = () => {
           onClick={() => setCollapsedSections(prev => ({...prev, participants: !prev.participants}))}
         >
           <div className="flex items-center gap-2">
-            <Users className="w-5 h-5 text-orange-500 transition-colors duration-300 group-hover:text-orange-600" />
-            <h2 className="text-xl font-semibold text-gray-900 transition-colors duration-300 group-hover:text-orange-600">Participants</h2>
+            <Users className={`w-5 h-5 ${theme.headerIcon} transition-colors duration-300 group-hover:${theme.iconColorHover}`} />
+            <h2 className={`text-xl font-semibold text-gray-900 transition-colors duration-300 group-hover:${theme.iconColorHover}`}>Participants</h2>
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 text-gray-600">
@@ -229,7 +261,7 @@ export const RoomSidebar: React.FC = () => {
             </div>
             
             {/* Animated chevron indicator */}
-            <div className="w-6 h-6 rounded-full flex items-center justify-center text-gray-400 transition-all duration-300 group-hover:text-orange-500">
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-gray-400 transition-all duration-300 group-hover:${theme.headerIcon}`}>
               <svg 
                 xmlns="http://www.w3.org/2000/svg" 
                 width="16" 
@@ -268,7 +300,7 @@ export const RoomSidebar: React.FC = () => {
                     />
                   ) : null}
                   <div 
-                    className={`w-8 h-8 rounded-full bg-orange-400 flex items-center justify-center text-white font-semibold ${participant.avatar ? 'hidden' : ''}`}
+                    className={`w-8 h-8 rounded-full ${theme.headerIcon.replace('text-', 'bg-')} flex items-center justify-center text-white font-semibold ${participant.avatar ? 'hidden' : ''}`}
                   >
                     {participant.name.charAt(0).toUpperCase()}
                   </div>
@@ -333,10 +365,10 @@ export const RoomSidebar: React.FC = () => {
         {!collapsedSections.roomInfo && (
           <div className="space-y-4">
             {/* Room Code with One-Click Copy - Enhanced Design */}
-            <div className="relative overflow-hidden bg-gradient-to-r from-orange-50 to-amber-50 p-4 rounded-lg shadow-sm hover:shadow transition-all duration-300 group">
+            <div className={`relative overflow-hidden bg-gradient-to-r ${theme.bgGradient} p-4 rounded-lg shadow-sm hover:shadow transition-all duration-300 group`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-orange-500 rounded-lg shadow-sm relative overflow-hidden flex items-center justify-center w-10 h-10">
+                  <div className={`p-2.5 ${theme.headerIcon.replace('text-', 'bg-')} rounded-lg shadow-sm relative overflow-hidden flex items-center justify-center w-10 h-10`}>
                     <span className="text-white font-bold flex items-center justify-center">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <line x1="4" y1="9" x2="20" y2="9"></line>
@@ -352,7 +384,7 @@ export const RoomSidebar: React.FC = () => {
                   </div>
                   <div>
                     <span className="text-sm text-gray-500 font-medium">Room Code</span>
-                    <p className="font-mono font-bold text-lg tracking-wide text-orange-600 transition-all duration-300 group-hover:text-orange-700">
+                    <p className={`font-mono font-bold text-lg tracking-wide ${theme.headerIcon} transition-all duration-300 group-hover:${theme.iconColorHover}`}>
                       {currentRoom.code || ''}
                     </p>
                   </div>
@@ -363,7 +395,7 @@ export const RoomSidebar: React.FC = () => {
                   className={`p-2.5 transition-all duration-300 ease-out rounded-full ${
                     codeCopied 
                       ? 'bg-green-100 text-green-600' 
-                      : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+                      : `${theme.iconColor.replace('text-', 'bg-').replace('-300', '-100')} ${theme.headerIcon} hover:${theme.iconColor.replace('text-', 'bg-').replace('-300', '-200')}`
                   }`}
                   title={codeCopied ? "Copied!" : "Copy room code"}
                 >
@@ -387,7 +419,7 @@ export const RoomSidebar: React.FC = () => {
               
               {/* Decorative element */}
               <div className={`absolute -bottom-6 -right-6 w-12 h-12 ${
-                codeCopied ? 'bg-green-200/50 scale-150' : 'bg-orange-200/50'
+                codeCopied ? 'bg-green-200/50 scale-150' : `${theme.iconColor.replace('text-', 'bg-').replace('-300', '-200')}/50`
               } rounded-full transform transition-all duration-300 ease-in-out group-hover:scale-150`} />
             </div>
             
@@ -397,7 +429,7 @@ export const RoomSidebar: React.FC = () => {
             } p-3 rounded-lg relative group`}
             >
               <div className="flex items-center gap-2">
-                <Timer className={`w-5 h-5 ${isRoomExpired ? 'text-red-500' : 'text-orange-500'}`} />
+                <Timer className={`w-5 h-5 ${isRoomExpired ? 'text-red-500' : theme.headerIcon}`} />
                 <span>{isRoomExpired ? 'Room Expired:' : 'Time Remaining:'}</span>
               </div>
               
@@ -429,7 +461,11 @@ export const RoomSidebar: React.FC = () => {
                         stroke={getTimerColor(timeRemaining)}
                         strokeWidth="10"
                         strokeDasharray="283"
-                        strokeDashoffset={283 - (283 * (timeRemaining / initialTimeTotal))}
+                        strokeDashoffset={
+                          initialTimeTotal > 0 
+                            ? Math.max(0, Math.min(283, 283 - (283 * (timeRemaining / initialTimeTotal))))
+                            : 283
+                        }
                         strokeLinecap="round"
                       />
                     </svg>
@@ -453,7 +489,7 @@ export const RoomSidebar: React.FC = () => {
             {isRoomExpired && (
               <motion.button
                 onClick={handleViewWinnersPodium}
-                className="flex items-center justify-center w-full mt-4 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300"
+                className={`flex items-center justify-center w-full mt-4 px-4 py-2.5 bg-gradient-to-r ${theme.buttonBg} text-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300`}
                 whileHover={{ y: -2 }}
                 whileTap={{ scale: 0.97 }}
               >
@@ -610,6 +646,18 @@ export const RoomSidebar: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Winners Podium Modal */}
+      <WinnersPodiumModal
+        isOpen={showWinnersPodium}
+        onClose={() => setShowWinnersPodium(false)}
+        roomName={currentRoom?.name || 'Unknown Room'}
+        suggestions={currentRoom?.suggestions || []}
+        voteCounts={voteCounts}
+        totalVotes={totalVotes}
+        userVotes={(window as any).__tabletalk_state?.userVotes || {}}
+        otherUserVotes={(window as any).__tabletalk_state?.otherUserVotesData || {}}
+      />
     </>
   );
 };

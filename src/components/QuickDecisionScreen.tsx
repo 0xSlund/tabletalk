@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
-import { cn } from '../lib/utils';
+import { cn, pageTransitionVariants } from '../lib/utils';
 import { fadeVariants, foodCardVariants } from './PageTransition';
 import { MealType, FilteredRecipe } from '../lib/database.functions';
 import BackButton from './BackButton';
@@ -397,11 +397,11 @@ export function QuickDecisionScreen() {
 
   return (
     <motion.div 
-      className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50"
+      className="min-h-screen bg-gradient-to-br from-[#FFFDF9] via-[#FAF8F5] to-[#F3ECE3]"
       initial="initial"
       exit="exit"
-      variants={fadeVariants}
-      animate={isExiting ? "exit" : "initial"}
+        variants={pageTransitionVariants}
+        animate={isExiting ? "exit" : "enter"}
       onTouchStart={e => {
         if (cardRef.current) {
           const touch = e.touches[0];

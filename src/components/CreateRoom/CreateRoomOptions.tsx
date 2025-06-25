@@ -1,10 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { UtensilsCrossed, Clock, Settings, Bookmark, ChevronRight } from 'lucide-react';
+import { UtensilsCrossed, Clock, Settings, Bookmark, ArrowLeft } from 'lucide-react';
 import { fadeVariants } from '../PageTransition';
-import BackButton from '../BackButton';
 import { cn } from '../../lib/utils';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 interface CreateRoomOptionsProps {
   onQuickCreate: () => void;
@@ -17,19 +16,21 @@ export const CreateRoomOptions: React.FC<CreateRoomOptionsProps> = ({
   onCustomCreate,
   onSavedTemplates,
 }) => {
-  // Optimized variants with reduced animation complexity - matched with ActionCards
-  const optimizedCardVariants = {
+  const navigate = useNavigate();
+
+  // Simple card animation variants
+  const cardVariants = {
     initial: { 
       scale: 1,
       y: 0,
     },
     hover: { 
-      scale: 1.03,
-      y: -4,
+      scale: 1.02,
+      y: -2,
       transition: {
         type: "spring",
         stiffness: 300,
-        damping: 20
+        damping: 25
       }
     },
     tap: { 
@@ -39,27 +40,6 @@ export const CreateRoomOptions: React.FC<CreateRoomOptionsProps> = ({
         stiffness: 500,
         damping: 30
       }
-    }
-  };
-  
-  // Simplified card icon animation
-  const cardIconVariants = {
-    initial: { scale: 1 },
-    hover: {
-      scale: 1.1,
-      transition: {
-        duration: 0.3,
-        ease: "easeOut"
-      }
-    }
-  };
-  
-  // Simple highlight for card border
-  const cardHighlightVariants = {
-    initial: { opacity: 0 },
-    hover: {
-      opacity: 1,
-      transition: { duration: 0.2 }
     }
   };
 
@@ -81,7 +61,7 @@ export const CreateRoomOptions: React.FC<CreateRoomOptionsProps> = ({
       gradient: "bg-gradient-to-br from-[#FFF9E6] to-[#FFF0C9]",
       iconColor: "text-[#F3C677]",
       iconBg: "bg-[#F3C677]/15",
-      path: "/create/quick",
+      onClick: onQuickCreate,
       ariaLabel: "Create a quick room"
     },
     {
@@ -91,7 +71,7 @@ export const CreateRoomOptions: React.FC<CreateRoomOptionsProps> = ({
       gradient: "bg-gradient-to-br from-[#EBF5F7] to-[#D9EDF2]",
       iconColor: "text-[#457B9D]",
       iconBg: "bg-[#457B9D]/15",
-      path: "/create/custom",
+      onClick: onCustomCreate,
       ariaLabel: "Create a custom room"
     },
     {
@@ -101,10 +81,14 @@ export const CreateRoomOptions: React.FC<CreateRoomOptionsProps> = ({
       gradient: "bg-gradient-to-br from-[#EEFAF2] to-[#D8F2E3]",
       iconColor: "text-[#2A9D8F]",
       iconBg: "bg-[#2A9D8F]/15",
-      path: "/create/templates",
+      onClick: onSavedTemplates,
       ariaLabel: "Use a saved template"
     }
   ];
+
+  const handleBack = () => {
+    navigate('/');
+  };
 
   return (
     <motion.div
@@ -112,33 +96,31 @@ export const CreateRoomOptions: React.FC<CreateRoomOptionsProps> = ({
       initial="hidden"
       animate="visible"
       exit="exit"
-      className="min-h-screen bg-gradient-to-br from-[#FCF0E4] via-orange-100/30 to-[#FADEC8]"
+      className="min-h-screen bg-gradient-to-br from-[#FFFDF9] via-[#FAF8F5] to-[#F3ECE3]"
     >
-      {/* Header with subtle pattern */}
-      <header className="bg-white/80 backdrop-blur-sm shadow-md sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <BackButton />
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <div className="absolute -inset-1 bg-orange-300 rounded-full blur-sm opacity-70"></div>
-                <UtensilsCrossed className="relative w-6 h-6 text-orange-600" />
-              </div>
-              <h1 className="text-2xl font-bold text-gray-900">Create a Room</h1>
+      <div className="max-w-4xl mx-auto px-4 py-12">
+        {/* Header */}
+        <div className="flex items-center justify-center mb-8 relative">
+          {/* Back Button */}
+          <button
+            onClick={handleBack}
+            className="absolute left-0 p-2 rounded-lg bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-all"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="w-5 h-5 text-gray-600" />
+          </button>
+          
+          {/* Title */}
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center shadow-md">
+              <UtensilsCrossed className="w-5 h-5 text-white" />
             </div>
-            <div className="w-20" /> {/* Spacer for centering */}
+            <h1 className="text-2xl font-bold text-gray-900">Create a Room</h1>
           </div>
         </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 py-8 relative">
-        {/* Decorative elements */}
-        <div className="absolute top-20 right-4 w-32 h-32 bg-orange-200 rounded-full opacity-20 blur-xl -z-10"></div>
-        <div className="absolute bottom-20 left-4 w-24 h-24 bg-red-200 rounded-full opacity-20 blur-xl -z-10"></div>
         
         <motion.p 
-          className="text-center text-lg font-medium text-gray-700 mb-8"
+          className="text-center text-gray-600 mb-8"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -146,74 +128,51 @@ export const CreateRoomOptions: React.FC<CreateRoomOptionsProps> = ({
           Choose how you want to set up your dining experience
         </motion.p>
 
-        <section aria-labelledby="room-creation-options">
-          <h2 id="room-creation-options" className="sr-only">Room Creation Options</h2>
-          
+        {/* Options */}
           <motion.div
             variants={staggerContainer}
             initial="hidden"
             animate="visible"
-            className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 max-w-4xl mx-auto"
+          className="grid grid-cols-1 sm:grid-cols-3 gap-6"
           >
-            {options.map((option) => (
-              <Link 
+          {options.map((option, idx) => (
+            <motion.button
                 key={option.title}
-                to={option.path}
-                aria-label={option.ariaLabel}
-                className="block"
-              >
-                <motion.div
-                  variants={optimizedCardVariants}
+              variants={cardVariants}
                   whileHover="hover"
                   whileTap="tap"
-                  className={`relative ${option.gradient} rounded-2xl p-4 sm:p-6 shadow-md hover:shadow-lg transition-shadow text-left group overflow-hidden border border-black/[0.06] cursor-pointer`}
-                >
-                  {/* Card highlight border */}
-                  <motion.div 
-                    className="absolute inset-0 rounded-2xl border-2 border-primary/30"
-                    initial="initial"
-                    whileHover="hover"
-                    variants={cardHighlightVariants}
-                  />
-                  
-                  <div className="flex items-start sm:items-center sm:block">
-                    <motion.div
-                      initial="initial"
-                      whileHover="hover"
-                      variants={cardIconVariants}
+              onClick={option.onClick}
+              aria-label={option.ariaLabel}
                       className={cn(
-                        "relative w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center mb-0 sm:mb-4 mr-4 sm:mr-0 z-10",
+                `flex flex-col items-center text-center p-8 rounded-2xl shadow-md hover:shadow-lg transition-all`,
+                option.gradient
+              )}
+            >
+              <div className={cn(
+                "w-14 h-14 rounded-lg flex items-center justify-center mb-4",
                         option.iconBg
-                      )}
-                    >
-                      <option.icon className={cn(
-                        "w-6 h-6 sm:w-7 sm:h-7 relative z-10",
-                        option.iconColor
-                      )} />
-                    </motion.div>
-                    
-                    <div className="relative z-10 flex-1 sm:flex-none">
-                      <h3 className="text-lg sm:text-2xl font-semibold mb-1 sm:mb-2 text-gray-800 flex items-center">
+              )}>
+                <option.icon className={cn("w-7 h-7", option.iconColor)} />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
                         {option.title}
-                        <motion.div
-                          initial={{ x: -5, opacity: 0 }}
-                          whileHover={{ x: 0, opacity: 1 }}
-                          className="inline-block ml-2"
-                        >
-                          <ChevronRight className="w-5 h-5 text-orange-500" />
-                        </motion.div>
                       </h3>
-                      <p className="text-sm sm:text-base text-gray-700">
+              <p className="text-sm text-gray-700">
                         {option.subtitle}
                       </p>
-                    </div>
-                  </div>
-                </motion.div>
-              </Link>
+            </motion.button>
             ))}
           </motion.div>
-        </section>
-      </main>
+
+        <motion.p 
+          className="text-center text-xs text-gray-500 mt-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8 }}
+        >
+          All room types support real-time voting and decision making
+        </motion.p>
+      </div>
     </motion.div>
   );
 };

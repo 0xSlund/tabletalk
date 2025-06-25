@@ -41,10 +41,10 @@ export const TimerSettingsSection: React.FC<TimerSettingsSectionProps> = ({
 
   // Refs for holding the latest callbacks to avoid stale closures
   const handleIncrementRef = React.useRef((typeInput?: 'hours' | 'minutes') => {
-    console.log('handleIncrementRef called but not initialized');
+    // Empty function - will be replaced by useEffect
   }); 
   const handleDecrementRef = React.useRef((typeInput?: 'hours' | 'minutes') => {
-    console.log('handleDecrementRef called but not initialized');
+    // Empty function - will be replaced by useEffect
   });
 
   React.useEffect(() => {
@@ -70,19 +70,16 @@ export const TimerSettingsSection: React.FC<TimerSettingsSectionProps> = ({
   }, [timerOption, customDuration, durationUnit]);
 
   const handleIncrement = React.useCallback((typeInput?: 'hours' | 'minutes') => {
-    console.log('handleIncrement called with:', typeInput);
     const unitToUse = isConfirmed ? durationUnit : tempUnit;
     const setDurFn = isConfirmed ? setCustomDuration : setTempDuration;
     const setHoursFn = setTempHours;
     const setMinutesFn = setTempMinutes;
     
     const type = unitToUse === 'hours' ? (typeInput || 'minutes') : 'minutes';
-    console.log('handleIncrement - unitToUse:', unitToUse, 'type:', type);
 
     if (unitToUse === 'hours') {
       let currentHours = parseInt(tempHours) || 0;
       let currentMinutes = parseInt(tempMinutes) || 0;
-      console.log('handleIncrement - current values:', { currentHours, currentMinutes });
       const maxHours = 24;
       const maxMinutes = 59;
       
@@ -143,7 +140,6 @@ export const TimerSettingsSection: React.FC<TimerSettingsSectionProps> = ({
           updatedMinutes = currentMinutes + 1;
         }
       }
-      console.log('handleIncrement - updated values:', { updatedHours, updatedMinutes });
       setHoursFn(updatedHours.toString());
       setMinutesFn(updatedMinutes.toString());
       setDurFn((updatedHours * 60 + updatedMinutes).toString());
@@ -151,7 +147,6 @@ export const TimerSettingsSection: React.FC<TimerSettingsSectionProps> = ({
     } else {
       const currentValStr = isConfirmed ? customDurationRef.current : tempDuration;
       let currentValue = parseInt(currentValStr) || 0;
-      console.log('handleIncrement - minutes mode, currentValue:', currentValue);
       const maxValue = 59;
       
       if (currentValue >= maxValue) {
@@ -159,11 +154,9 @@ export const TimerSettingsSection: React.FC<TimerSettingsSectionProps> = ({
         setTempHours('1');
         setTempMinutes('0');
         setDurFn('60');
-        console.log('handleIncrement - rolled over to 1 hour');
         return;
       }
       const newValue = Math.min(maxValue, currentValue + 1);
-      console.log('handleIncrement - minutes mode, newValue:', newValue);
       setDurFn(newValue.toString());
     }
   }, [isConfirmed, tempDuration, durationUnit, tempUnit, tempHours, tempMinutes, setCustomDuration, setTempDuration, setTempHours, setTempMinutes, customDurationRef, setIsAtLimit, setTypedLimitExceeded, setTempUnit]);
@@ -200,7 +193,6 @@ export const TimerSettingsSection: React.FC<TimerSettingsSectionProps> = ({
             setTempDuration('59');
             setTempHours('0');
             setTempMinutes('0');
-            console.log('handleDecrement - rolled back to 59 minutes mode');
             return;
           } else {
             updatedHours = 0;
@@ -231,12 +223,10 @@ export const TimerSettingsSection: React.FC<TimerSettingsSectionProps> = ({
   }, [isConfirmed, tempDuration, durationUnit, tempUnit, tempHours, tempMinutes, setCustomDuration, setTempDuration, setTempHours, setTempMinutes, customDurationRef, setTempUnit]);
 
   React.useEffect(() => {
-    console.log('Updating handleIncrementRef');
     handleIncrementRef.current = handleIncrement;
   }, [handleIncrement]);
 
   React.useEffect(() => {
-    console.log('Updating handleDecrementRef');
     handleDecrementRef.current = handleDecrement;
   }, [handleDecrement]);
 
@@ -250,27 +240,23 @@ export const TimerSettingsSection: React.FC<TimerSettingsSectionProps> = ({
     if (holdIntervalRef.current) clearInterval(holdIntervalRef.current);
     
     holdTimeoutRef.current = setTimeout(() => {
-      console.log('Hold timeout triggered, performing initial action for:', action);
       if (action.startsWith('increment')) handleIncrementRef.current(callType);
       else if (action.startsWith('decrement')) handleDecrementRef.current(callType);
 
       holdIntervalRef.current = setInterval(() => {
         holdDurationRef.current += 100;
-        console.log('Hold interval triggered for:', action, 'duration:', holdDurationRef.current);
         if (action.startsWith('increment')) handleIncrementRef.current(callType);
         else if (action.startsWith('decrement')) handleDecrementRef.current(callType);
         
         if (holdDurationRef.current > 2800) {
           clearInterval(holdIntervalRef.current!);
           holdIntervalRef.current = setInterval(() => {
-            console.log('Very fast hold interval for:', action);
             if (action.startsWith('increment')) handleIncrementRef.current(callType);
             else if (action.startsWith('decrement')) handleDecrementRef.current(callType);
           }, 50);
         } else if (holdDurationRef.current > 1300) {
           clearInterval(holdIntervalRef.current!);
           holdIntervalRef.current = setInterval(() => {
-            console.log('Fast hold interval for:', action);
             if (action.startsWith('increment')) handleIncrementRef.current(callType);
             else if (action.startsWith('decrement')) handleDecrementRef.current(callType);
           }, 100);
@@ -280,7 +266,6 @@ export const TimerSettingsSection: React.FC<TimerSettingsSectionProps> = ({
   }, [handleIncrement, handleDecrement]);
 
   const stopHolding = React.useCallback(() => {
-    console.log('stopHolding called');
     setIsHolding(null);
     holdDurationRef.current = 0; 
     if (holdTimeoutRef.current) clearTimeout(holdTimeoutRef.current);
@@ -740,11 +725,9 @@ export const TimerSettingsSection: React.FC<TimerSettingsSectionProps> = ({
                             label="Hours"
                             value={tempHours}
                             onIncrement={() => {
-                              console.log('Hours onIncrement called');
                               handleIncrementRef.current('hours');
                             }}
                             onDecrement={() => {
-                              console.log('Hours onDecrement called');
                               handleDecrementRef.current('hours');
                             }}
                             onChange={(e) => handleTempDurationChange(e, 'hours')}

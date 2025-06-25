@@ -1,5 +1,6 @@
 import React from 'react';
 import { Bell } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { RemindersSectionProps } from '../types';
 import { cn } from '../../../../../../lib/utils';
 
@@ -34,16 +35,48 @@ export const RemindersSection: React.FC<RemindersSectionProps> = ({
         </label>
       </div>
       
-      {reminders && deadline && (
-        <div className="bg-emerald-50 rounded-lg border border-emerald-200 p-2.5 text-sm text-emerald-800 flex items-center gap-2">
-          <Bell className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-          <p>Reminders will be sent 24 hours and 1 hour before the deadline</p>
-        </div>
-      )}
-      
-      {!deadline && (
-        <p className="text-xs text-gray-500">Set a deadline to enable automatic reminders</p>
-      )}
+      <AnimatePresence mode="wait">
+        {reminders && deadline && (
+          <motion.div 
+            className="bg-emerald-50 rounded-lg border border-emerald-200 p-2.5 text-sm text-emerald-800 flex items-center gap-2 overflow-hidden"
+            initial={{ opacity: 0, height: 0, y: -10 }}
+            animate={{ 
+              opacity: 1, 
+              height: "auto", 
+              y: 0,
+              transition: {
+                height: { type: "spring", bounce: 0.3, duration: 0.4 },
+                opacity: { duration: 0.3 },
+                y: { type: "spring", stiffness: 100 }
+              }
+            }}
+            exit={{ 
+              opacity: 0, 
+              height: 0, 
+              y: -10,
+              transition: {
+                height: { duration: 0.3 },
+                opacity: { duration: 0.2 }
+              }
+            }}
+          >
+            <Bell className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+            <p>Reminders will be sent 30 minutes before the deadline</p>
+          </motion.div>
+        )}
+        
+        {!deadline && (
+          <motion.p 
+            className="text-xs text-gray-500"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            Set a deadline to enable automatic reminders
+          </motion.p>
+        )}
+      </AnimatePresence>
     </div>
   );
 }; 

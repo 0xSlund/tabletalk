@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { UtensilsCrossed, ArrowLeft, Globe, TrendingUp, Clock, Users, ChefHat, Star, ArrowUpRight, Loader2 } from 'lucide-react';
 import { useAppStore } from '../lib/store';
 import { fetchCuisines, fetchRecipesByCuisine, type Cuisine, type Recipe } from '../lib/supabase';
+import { pageTransitionVariants } from '../lib/utils';
 import BackButton from './BackButton';
 
 interface DishDetails {
@@ -234,7 +235,7 @@ export function ExploreCuisinesScreen() {
 
   if (loading && cuisines.length === 0) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-[#FFFDF9] via-[#FAF8F5] to-[#F3ECE3] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-12 h-12 text-primary animate-spin" />
           <p className="text-neutral font-medium">Loading cuisines...</p>
@@ -244,7 +245,13 @@ export function ExploreCuisinesScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <motion.div 
+      className="min-h-screen bg-gradient-to-br from-[#FFFDF9] via-[#FAF8F5] to-[#F3ECE3]"
+      initial="initial"
+      exit="exit"
+      variants={pageTransitionVariants}
+      animate={isExiting ? "exit" : "enter"}
+    >
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-10">
         <div className="max-w-[1400px] mx-auto px-4 py-4 sm:px-6 lg:px-8">
@@ -294,6 +301,6 @@ export function ExploreCuisinesScreen() {
           ))}
         </div>
       </main>
-    </div>
+    </motion.div>
   );
 }

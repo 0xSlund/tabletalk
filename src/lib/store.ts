@@ -51,6 +51,7 @@ interface ActiveRoom {
   createdAt: string;
   expiresAt: string;
   isActive?: boolean;
+  foodMode?: string | null;
   winningOptions?: Record<string, {
     optionId: string;
     text: string;
@@ -81,11 +82,13 @@ interface AppState {
   fetchRecentRooms: () => Promise<void>;
   fetchRoomHistory: () => Promise<void>;
   signOut: () => Promise<void>;
-  createRoom: (roomName: string, timerDuration: number) => Promise<{ roomId: string | null; roomCode: string | null }>;
+  createRoom: (roomName: string, timerDuration: number, foodMode?: string | null) => Promise<{ roomId: string | null; roomCode: string | null }>;
   joinRoom: (roomCode: string) => Promise<boolean>;
   addSuggestion: (roomId: string, text: string, options: string[]) => Promise<boolean>;
   voteForOption: (roomId: string, suggestionId: string, optionId: string) => Promise<boolean>;
   sendMessage: (roomId: string, text: string) => Promise<boolean>;
+  addMessage: (text: string) => Promise<boolean>;
+  loadMessages: (roomId: string) => Promise<boolean>;
   recordVotingResult: (roomId: string, suggestionId: string, winningOptionId: string, votesCount: number) => Promise<boolean>;
   removeRoom: (roomId: string) => Promise<boolean>;
   addFoodSuggestion: (name: string, emoji: string, description: string) => Promise<boolean>;
@@ -109,6 +112,7 @@ export const useAppStore = create<AppState>()(
         createdAt: new Date().toISOString(),
         expiresAt: new Date().toISOString(),
         isActive: true,
+        foodMode: null,
         votes: {}
       },
       auth: {
@@ -310,7 +314,7 @@ export const useAppStore = create<AppState>()(
         }
       },
       
-      createRoom: async (roomName: string, timerDuration: number) => {
+      createRoom: async (roomName: string, timerDuration: number, foodMode?: string | null) => {
         const { auth } = get();
         if (!auth.user) return { roomId: null, roomCode: null };
         
@@ -343,7 +347,8 @@ export const useAppStore = create<AppState>()(
             name: roomName,
             code: roomCode,
             created_by: auth.user.id,
-            expires_at: formattedExpiryDate
+            expires_at: formattedExpiryDate,
+            food_mode: foodMode
           };
           
           // Using a more direct approach to insert the room
@@ -398,6 +403,7 @@ export const useAppStore = create<AppState>()(
             createdAt: createdRoom.created_at,
             expiresAt: createdRoom.expires_at,
             isActive: true,
+            foodMode: createdRoom.food_mode,
             votes: {}
           };
           
@@ -451,6 +457,7 @@ export const useAppStore = create<AppState>()(
                 code,
                 created_at,
                 expires_at,
+                food_mode,
                 room_participants (
                   profile_id,
                   is_host
@@ -472,6 +479,7 @@ export const useAppStore = create<AppState>()(
                 code,
                 created_at,
                 expires_at,
+                food_mode,
                 room_participants (
                   profile_id,
                   is_host
@@ -558,9 +566,6 @@ export const useAppStore = create<AppState>()(
             return false;
           }
           
-          // Fetch votes for this room
-          await get().fetchVotesForRoom(room.id);
-          
           // Map data to our store format
           const formattedParticipants = participants.map(p => ({
             id: p.profile_id,
@@ -590,6 +595,7 @@ export const useAppStore = create<AppState>()(
               createdAt: room.created_at,
               expiresAt: room.expires_at,
               isActive: !isExpired,
+              foodMode: room.food_mode,
               votes: {} // Will be updated by fetchVotesForRoom
             },
             activeTab: 'active-room',
@@ -733,8 +739,9 @@ export const useAppStore = create<AppState>()(
             console.log('Vote saved successfully:', voteResult);
           }
           
-          // Fetch all votes for real-time update
-          await get().fetchVotesForRoom(currentRoom.id);
+          // Remove automatic vote refresh - use optimistic updates instead
+          // The UI is already updated optimistically, no need to refetch
+          // await get().fetchVotesForRoom(currentRoom.id);
           
           return true;
         } catch (error) {
@@ -779,8 +786,8 @@ export const useAppStore = create<AppState>()(
           
           console.log('Vote deleted successfully:', existingVote.id);
           
-          // Update local state by fetching all votes again
-          await get().fetchVotesForRoom(currentRoom.id);
+          // Remove automatic vote refresh - use optimistic updates instead
+          // await get().fetchVotesForRoom(currentRoom.id);
           
           return true;
         } catch (error) {
@@ -924,11 +931,104 @@ export const useAppStore = create<AppState>()(
         }
       },
       
-      sendMessage: async () => {
-        // Implementation will be added later
-        return Promise.resolve(false);
+      sendMessage: async (roomId: string, text: string) => {
+        const { auth, currentRoom } = get();
+        if (!auth.user || !roomId || !text.trim()) return false;
+
+        try {
+          // Send message to Supabase
+          const { data: message, error } = await supabase
+            .from('messages')
+            .insert({
+              room_id: roomId,
+              profile_id: auth.user.id,
+              text: text.trim()
+            })
+            .select(`
+              id,
+              text,
+              created_at,
+              profiles!inner(id, username, avatar_url)
+            `)
+            .single();
+
+          if (error) throw error;
+
+          // Add message to local state
+          const newMessage = {
+            id: message.id,
+            userId: auth.user.id,
+            userName: auth.user.username || 'Unknown',
+            text: message.text,
+            timestamp: message.created_at
+          };
+
+          set({
+            currentRoom: {
+              ...currentRoom,
+              messages: [...currentRoom.messages, newMessage]
+            }
+          });
+
+                    return true;
+        } catch (error) {
+          console.error('Error sending message:', error);
+          return false;
+        }
       },
-      
+
+      addMessage: async (text: string) => {
+        const { currentRoom } = get();
+        if (!currentRoom.id || !text.trim()) return false;
+        
+        return await get().sendMessage(currentRoom.id, text);
+      },
+
+      loadMessages: async (roomId: string) => {
+        const { auth, currentRoom } = get();
+        if (!auth.user || !roomId) return false;
+
+        try {
+          const { data: messages, error } = await supabase
+            .from('messages')
+            .select(`
+              id,
+              text,
+              created_at,
+              profile_id,
+              profiles!inner(id, username, avatar_url)
+            `)
+            .eq('room_id', roomId)
+            .order('created_at', { ascending: true });
+
+          if (error) throw error;
+
+          // Transform messages to match the expected format
+          const formattedMessages = (messages || []).map(msg => ({
+            id: msg.id,
+            userId: msg.profile_id,
+            userName: msg.profiles.username || 'Unknown',
+            text: msg.text,
+            timestamp: msg.created_at
+          }));
+
+          // Update current room with messages if it's the same room
+          if (currentRoom.id === roomId) {
+            set({
+              currentRoom: {
+                ...currentRoom,
+                messages: formattedMessages
+              }
+            });
+          }
+
+          return true;
+        } catch (error) {
+          console.error('Error loading messages:', error);
+          return false;
+        }
+      },
+
       recordVotingResult: async () => {
         // Implementation will be added later
         return Promise.resolve(false);

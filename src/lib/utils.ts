@@ -47,17 +47,27 @@ export const buttonVariants = {
 export const pageTransitionVariants = {
   initial: { 
     opacity: 0,
-    x: -20
+    x: -10,
+    scale: 0.98
   },
   enter: { 
     opacity: 1,
     x: 0,
-    transition: { duration: 0.32, ease: "easeOut" }
+    scale: 1,
+    transition: { 
+      duration: 0.4, 
+      ease: [0.25, 0.46, 0.45, 0.94],
+      staggerChildren: 0.1
+    }
   },
   exit: { 
     opacity: 0,
-    x: 20,
-    transition: { duration: 0.32, ease: "easeIn" }
+    x: 10,
+    scale: 0.98,
+    transition: { 
+      duration: 0.3, 
+      ease: [0.55, 0.055, 0.675, 0.19]
+    }
   }
 };
 

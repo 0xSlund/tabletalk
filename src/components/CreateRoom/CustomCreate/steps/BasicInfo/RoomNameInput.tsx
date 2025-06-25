@@ -73,7 +73,10 @@ const spinAnimationStyle = `
   }
   
   .suggestion-fade-out {
-    animation: suggestion-fade-out 0.25s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    opacity: 0.3;
+    transition: none !important;
+    transform: none !important;
+    animation: none !important;
   }
   
   @keyframes suggestion-fade-in {
@@ -100,16 +103,6 @@ const spinAnimationStyle = `
     transition: none !important;
     transform: none !important;
     animation: none !important;
-  }
-  
-  @keyframes status-badge-pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.08); }
-    100% { transform: scale(1); }
-  }
-  
-  .status-badge-pulse {
-    animation: status-badge-pulse 0.8s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
   @keyframes text-color-transition {
@@ -548,7 +541,7 @@ export function RoomNameInput({ roomName, setRoomName, foodMode, isLoading }: Ro
       }
     };
     
-    fetchSuggestionBank();
+        fetchSuggestionBank();
   }, []);
   
   // Helper function to generate suggestions from a specific bank
@@ -705,9 +698,10 @@ export function RoomNameInput({ roomName, setRoomName, foodMode, isLoading }: Ro
   
   // Generate suggestions based on food mode and time of day without repeating previously shown suggestions
   const generateSuggestions = useCallback(() => {
-    // If suggestions are still loading, return a few placeholders
+    // If suggestions are still loading, don't return any suggestions yet
+    // Let the UI handle the loading state separately
     if (isFetchingSuggestions) {
-      return ['Looking for ideas...', 'Getting suggestions...', 'Finding options...'];
+      return [];
     }
     
     // If error occurred and we have no suggestions, return generic options
@@ -718,15 +712,28 @@ export function RoomNameInput({ roomName, setRoomName, foodMode, isLoading }: Ro
     return generateSuggestionsFromBank(suggestionBank);
   }, [foodMode, recentlyUsedSuggestions, isFetchingSuggestions, fetchError, suggestionBank, generateSuggestionsFromBank]);
 
+  // Auto-update suggestions when fetching completes and dropdown is open
+  useEffect(() => {
+    if (!isFetchingSuggestions && showSuggestions && currentSuggestions.length === 0) {
+      const suggestions = generateSuggestions();
+      setCurrentSuggestions(suggestions);
+    }
+  }, [isFetchingSuggestions, showSuggestions, currentSuggestions.length, generateSuggestions]);
+
   // Handle opening suggestions
   const handleOpenSuggestions = useCallback(() => {
     setIsFocused(true);
     setShowSuggestions(true);
     
-    // Generate new suggestions when opening dropdown
-    const suggestions = generateSuggestions();
-    setCurrentSuggestions(suggestions);
-  }, [generateSuggestions]);
+    // Only generate suggestions if not currently fetching
+    if (!isFetchingSuggestions) {
+      const suggestions = generateSuggestions();
+      setCurrentSuggestions(suggestions);
+    } else {
+      // Clear suggestions while loading
+      setCurrentSuggestions([]);
+    }
+  }, [generateSuggestions, isFetchingSuggestions]);
   
   // Add refs to track timeouts and elements
   const timeoutRefs = useRef<number[]>([]);
@@ -788,6 +795,11 @@ export function RoomNameInput({ roomName, setRoomName, foodMode, isLoading }: Ro
 
   // Handle rerolling for new suggestions
   const handleRerollSuggestions = () => {
+    // Don't allow reroll if still fetching suggestions
+    if (isFetchingSuggestions) {
+      return;
+    }
+    
     setShowSuggestions(true); // Explicitly ensure dropdown stays open
     
     // Clean up any existing animations first
@@ -879,8 +891,19 @@ export function RoomNameInput({ roomName, setRoomName, foodMode, isLoading }: Ro
     }, 250);
   };
   
+  // Helper function to check if a suggestion is a loading placeholder
+  const isLoadingPlaceholder = (suggestion: string) => {
+    const loadingTexts = ['Looking for ideas', 'Getting suggestions', 'Finding options', 'Loading...', 'Please wait'];
+    return loadingTexts.some(loading => suggestion.toLowerCase().includes(loading.toLowerCase()));
+  };
+
   // Handle clicking a suggestion
   const handleSuggestionClick = (suggestion: string) => {
+    // Don't allow selection of loading placeholders
+    if (isLoadingPlaceholder(suggestion)) {
+      return;
+    }
+    
     setRoomName(suggestion);
     // Explicitly close dropdown when selecting a suggestion
     setShowSuggestions(false);
@@ -1059,15 +1082,7 @@ export function RoomNameInput({ roomName, setRoomName, foodMode, isLoading }: Ro
   
   // Get badge colors based on completion state
   const getBadgeColors = () => {
-    // Initial state is green when first completed
-    if (!transitionCompleted && roomName) {
-      return {
-        bgColor: 'bg-green-100',
-        textColor: 'text-green-700'
-      };
-    }
-    
-    // After transition, use themed colors
+    // Always use themed colors - no initial green state
     if (!roomName) {
       return {
         bgColor: 'bg-amber-100',
@@ -1099,12 +1114,8 @@ export function RoomNameInput({ roomName, setRoomName, foodMode, isLoading }: Ro
   // Effect to handle badge transition after input
   useEffect(() => {
     if (roomName && !transitionCompleted) {
-      // Wait for a brief period before transitioning to the themed color
-      const timer = setTimeout(() => {
-        setTransitionCompleted(true);
-      }, 1000); // 1 second delay before transition
-      
-      return () => clearTimeout(timer);
+      // Immediately set transition as completed since we don't need the delay anymore
+      setTransitionCompleted(true);
     }
   }, [roomName, lastInputUpdate, transitionCompleted]);
   
@@ -1153,12 +1164,7 @@ export function RoomNameInput({ roomName, setRoomName, foodMode, isLoading }: Ro
                   stiffness: 300,
                   damping: 15
                 }}
-                className={`text-xs font-medium px-2.5 py-0.5 rounded-full transition-all duration-700 ${getBadgeColors().bgColor} ${getBadgeColors().textColor} ${roomName && !transitionCompleted ? 'status-badge-pulse' : ''}`}
-                onAnimationComplete={() => {
-                  if (roomName && !transitionCompleted) {
-                    setTransitionCompleted(true);
-                  }
-                }}
+                className={`text-xs font-medium px-2.5 py-0.5 rounded-full transition-all duration-700 ${getBadgeColors().bgColor} ${getBadgeColors().textColor}`}
               >
                 {!roomName ? 'Required' : 'Completed'}
               </motion.div>
@@ -1312,10 +1318,30 @@ export function RoomNameInput({ roomName, setRoomName, foodMode, isLoading }: Ro
                   </div>
                   
                   <div className="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto overflow-x-hidden p-2">
-                    {/* Main Grid: 2x2 grid for suggestions (3 regular + 1 reroll) */}
-                    <div className="grid grid-cols-2 gap-2 grid-rows-2">
-                      {/* Suggestion Buttons - Always exactly 3 regular suggestions */}
-                      {currentSuggestions.map((suggestion, index) => {
+                    {/* Show loading state when fetching suggestions */}
+                    {isFetchingSuggestions ? (
+                      <div className="flex flex-col items-center justify-center py-8 gap-3">
+                        <div className="animate-spin h-8 w-8 border-3 border-blue-500 rounded-full border-t-transparent"></div>
+                        <div className="text-center">
+                          <p className="text-sm font-medium text-gray-600 mb-1">Finding perfect suggestions...</p>
+                          <p className="text-xs text-gray-500">This may take a moment</p>
+                        </div>
+                      </div>
+                    ) : currentSuggestions.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-8 gap-3">
+                        <div className="p-3 bg-gray-100 rounded-full">
+                          <Clock className="w-6 h-6 text-gray-400" />
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm font-medium text-gray-600 mb-1">No suggestions available</p>
+                          <p className="text-xs text-gray-500">Try refreshing or enter your own name</p>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Main Grid: 2x2 grid for suggestions (3 regular + 1 reroll) */
+                      <div className="grid grid-cols-2 gap-2 grid-rows-2">
+                        {/* Suggestion Buttons - Always exactly 3 regular suggestions */}
+                        {currentSuggestions.map((suggestion, index) => {
                         // Check if this suggestion is marked for fade out
                         const isFadingOut = suggestion.startsWith('__fadeout__');
                         // Get the actual suggestion text
@@ -1433,6 +1459,7 @@ export function RoomNameInput({ roomName, setRoomName, foodMode, isLoading }: Ro
                         <span className="text-sm font-medium truncate flex-1 min-w-0 overflow-hidden">Refresh</span>
                       </motion.button>
                     </div>
+                    )}
                   </div>
                 </div>
               </motion.div>

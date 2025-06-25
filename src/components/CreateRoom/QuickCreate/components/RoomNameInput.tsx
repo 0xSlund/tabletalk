@@ -200,8 +200,19 @@ export const RoomNameInput: React.FC<RoomNameInputProps> = ({
     }, 1500);
   };
 
+  // Helper function to check if a suggestion is a loading placeholder
+  const isLoadingPlaceholder = (suggestion: string) => {
+    const loadingTexts = ['Looking for ideas', 'Getting suggestions', 'Finding options', 'Loading...', 'Please wait'];
+    return loadingTexts.some(loading => suggestion.toLowerCase().includes(loading.toLowerCase()));
+  };
+
   // Apply suggestion to input
   const handleSelectSuggestion = (suggestion: string) => {
+    // Don't allow selection of loading placeholders
+    if (isLoadingPlaceholder(suggestion)) {
+      return;
+    }
+    
     setRoomName(suggestion);
     setDropdownOpen(false);
     validateInput(suggestion);

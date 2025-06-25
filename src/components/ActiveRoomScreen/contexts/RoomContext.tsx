@@ -41,7 +41,7 @@ export const useRoomContext = () => useContext(RoomContext);
 // Provider component
 export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { roomCode } = useParams<{ roomCode: string }>();
-  const { currentRoom, joinRoom } = useAppStore();
+  const { currentRoom } = useAppStore();
   
   // State variables
   const [isLoading, setIsLoading] = useState(true);
@@ -51,6 +51,9 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [roomExpired, setRoomExpired] = useState(false);
   const [remainingTime, setRemainingTime] = useState(0);
   const [phase, setPhase] = useState<'suggestion' | 'discussion' | 'voting' | 'results'>('suggestion');
+  
+  // Flag to prevent multiple calls to handleExpiredRoom
+  const [expiredRoomHandled, setExpiredRoomHandled] = useState(false);
   
   // Vote for a suggestion
   const voteForSuggestion = async (suggestionId: string, reaction: 'love' | 'like' | 'neutral' | 'dislike'): Promise<boolean> => {
@@ -79,12 +82,13 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Effect to load room when component mounts
   useEffect(() => {
-    if (roomCode) {
+    if (roomCode && !currentRoom?.id) {
       setIsLoading(true);
       
-      // Load room data
+      // Load room data using getState to avoid function dependency
       const loadRoom = async () => {
         try {
+          const { joinRoom } = useAppStore.getState();
           await joinRoom(roomCode);
           setIsLoading(false);
         } catch (err) {
@@ -95,7 +99,7 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       loadRoom();
     }
-  }, [roomCode, joinRoom]);
+  }, [roomCode, currentRoom?.id]); // Only depend on primitives
 
   // Effect to update local state when currentRoom changes
   useEffect(() => {
@@ -103,81 +107,74 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setRoomName(currentRoom.name || '');
       setParticipantCount(currentRoom.participants?.length || 0);
       
-      // Check if the room is expired
-      const expiresAt = new Date(currentRoom.expiresAt);
-      const now = new Date();
-      
-      // Log the time comparison for debugging
-      console.log(`Room expiry check - Current time: ${now.toISOString()}, Expires at: ${expiresAt.toISOString()}`);
-      
-      const isExpired = expiresAt <= now;
-      
-      // Update room expired state
-      setRoomExpired(isExpired);
-      
-      // If the room is expired, update its status in the database and handle it with our utility
-      if (isExpired && currentRoom.id) {
-        console.log('Room expired detected in RoomContext, updating room status');
+      // Only run expiry check if room is marked as active to prevent unnecessary processing
+      if (currentRoom.isActive !== false) {
+        // Check if the room is expired
+        const expiresAt = new Date(currentRoom.expiresAt);
+        const now = new Date();
+        const isExpired = expiresAt <= now;
         
-        // Update room status in the database
-        const updateRoomStatus = async () => {
-          try {
-            const { error } = await supabase
-              .from('rooms')
-              .update({ is_active: false })
-              .eq('id', currentRoom.id);
-              
-            if (error) {
-              console.error('Error updating room status in database:', error);
-            } else {
-              console.log('Successfully updated room status to inactive in database');
-              
-              // Make sure the currentRoom state is also updated
-              useAppStore.setState(state => ({
-                ...state,
-                currentRoom: {
-                  ...state.currentRoom,
-                  isActive: false
-                }
-              }));
+        // Update room expired state
+        setRoomExpired(isExpired);
+        
+        // If the room is expired and hasn't been handled yet, handle it
+        if (isExpired && currentRoom.id && !expiredRoomHandled) {
+          console.log('Room expired detected, handling...');
+          setExpiredRoomHandled(true); // Prevent multiple calls
+          
+          // Update room status in the database only
+          const updateRoomStatus = async () => {
+            try {
+              const { error } = await supabase
+                .from('rooms')
+                .update({ is_active: false })
+                .eq('id', currentRoom.id);
+                
+              if (error) {
+                console.error('Error updating room status:', error);
+              }
+            } catch (err) {
+              console.error('Exception updating room status:', err);
             }
-          } catch (err) {
-            console.error('Exception updating room status:', err);
-          }
-        };
-        
-        updateRoomStatus();
-        
-        // Handle expired room utilities (load votes, etc.)
-        handleExpiredRoom(currentRoom.id);
+          };
+          
+          updateRoomStatus();
+          handleExpiredRoom(currentRoom.id);
+        }
+      } else {
+        // Room is already inactive, just set the expired state
+        setRoomExpired(true);
       }
       
-      // Start an interval to update the remaining time
-      const timer = setInterval(() => {
-        const now = new Date();
-        const expiresAt = new Date(currentRoom.expiresAt);
-        
-        if (now >= expiresAt) {
-          // Room has expired
-          setRoomExpired(true);
-          setRemainingTime(0);
-          clearInterval(timer);
+      // Start an interval to update the remaining time (only if room is active)
+      if (currentRoom.isActive !== false) {
+        const timer = setInterval(() => {
+          const now = new Date();
+          const expiresAt = new Date(currentRoom.expiresAt);
           
-          // Handle newly expired room
-          if (currentRoom.id && !isExpired) {
-            console.log('Room just expired, handling with utility');
-            handleExpiredRoom(currentRoom.id);
+          if (now >= expiresAt) {
+            // Room has expired
+            setRoomExpired(true);
+            setRemainingTime(0);
+            clearInterval(timer);
+            
+            // Don't handle expiry here since it's handled above to prevent duplicate calls
+          } else {
+            // Room is still active
+            const timeRemaining = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
+            setRemainingTime(timeRemaining);
           }
-        } else {
-          // Room is still active
-          const timeRemaining = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
-          setRemainingTime(timeRemaining);
-        }
-      }, 1000);
-      
-      return () => clearInterval(timer);
+        }, 1000);
+        
+        return () => clearInterval(timer);
+      }
     }
-  }, [currentRoom]);
+  }, [currentRoom?.id, currentRoom?.expiresAt, currentRoom?.isActive, currentRoom?.name, currentRoom?.participants]);
+  
+  // Reset expired room handled flag when room ID changes
+  useEffect(() => {
+    setExpiredRoomHandled(false);
+  }, [currentRoom?.id]);
 
   // Provide the context value
   const contextValue: RoomContextType = {

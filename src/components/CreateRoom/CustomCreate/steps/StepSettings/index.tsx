@@ -24,7 +24,10 @@ export function StepSettings({
   setReminders,
   isLoading,
   accessControl,
-  setAccessControl
+  setAccessControl,
+  selectedMeals,
+  setSelectedMeals,
+  onSectionsCompletionChange
 }: StepSettingsProps) {
   const [showHelpTooltip, setShowHelpTooltip] = useState<'participants' | 'timer' | 'deadline' | 'reminders' | null>(null);
   const [showHelpMenu, setShowHelpMenu] = useState(false);
@@ -85,14 +88,22 @@ export function StepSettings({
 
   // Update completion status when deadline/reminders change
   useEffect(() => {
-    // Deadline is optional, so this section is always considered complete
-    // But we can mark it as complete if user has set a deadline
-    const isDeadlineComplete = deadline !== '' || reminders === false;
+    // Consider this section complete when:
+    // - A deadline is set (regardless of reminders setting), OR  
+    // - No deadline is set AND reminders are explicitly disabled
+    const isDeadlineComplete = deadline !== '' || (deadline === '' && reminders === false);
     setCompletedSections(prev => ({
       ...prev,
       deadlineNotifications: isDeadlineComplete
     }));
   }, [deadline, reminders]);
+
+  // Notify parent component when completion status changes
+  useEffect(() => {
+    if (onSectionsCompletionChange) {
+      onSectionsCompletionChange(completedSections);
+    }
+  }, [completedSections, onSectionsCompletionChange]);
 
   // Format deadline for display if it exists
   const formattedDeadline = deadline ? new Date(deadline).toLocaleString(undefined, {
@@ -244,7 +255,7 @@ export function StepSettings({
           <div className="p-5 border-b border-gray-100">
             <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <CalendarClock className="w-5 h-5 text-rose-600" />
+              <CalendarClock className="w-5 h-5 text-emerald-600" />
               Deadline & Notifications
             </h2>
               
@@ -288,6 +299,8 @@ export function StepSettings({
             minDate={minDate}
             showHelpTooltip={showHelpTooltip}
             setShowHelpTooltip={setShowHelpTooltip}
+            selectedMeals={selectedMeals}
+            setSelectedMeals={setSelectedMeals}
           />
             
             <div className="border-t border-gray-100 pt-5">

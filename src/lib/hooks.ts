@@ -99,7 +99,6 @@ export function useDebouncedValue<T>(value: T, delay: number): T {
 
 // Real-time Room Subscription Hook
 export function useRoomSubscription(roomId: string | null) {
-  const { currentRoom, updateRoom } = useAppStore();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -109,25 +108,24 @@ export function useRoomSubscription(roomId: string | null) {
     setLoading(true);
     setError(null);
 
-    // Subscribe to room changes
+    // Subscribe to room changes - only depend on roomId to prevent re-subscriptions
     const roomSubscription = supabase
-      .channel(`room:${roomId}`)
+      .channel(`food_suggestions:${roomId}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
-        table: 'suggestions',
+        table: 'food_suggestions',
         filter: `room_id=eq.${roomId}`
       }, async () => {
         try {
           // Refresh room data
           const { data: suggestions, error: suggestionsError } = await supabase
-            .from('suggestions')
+            .from('food_suggestions')
             .select(`
-              id, text, created_at, 
+              id, name, created_at, 
               profiles:profiles(id, username),
-              suggestion_options:suggestion_options(
-                id, text, 
-                votes:votes(id, profile_id)
+              food_votes:food_votes(
+                id, user_id, reaction
               )
             `)
             .eq('room_id', roomId);
@@ -135,22 +133,20 @@ export function useRoomSubscription(roomId: string | null) {
           if (suggestionsError) throw suggestionsError;
           
           if (suggestions) {
+            const currentRoomData = useAppStore.getState().currentRoom;
             const formattedSuggestions = suggestions.map(s => ({
               id: s.id,
-              text: s.text,
-              votes: s.suggestion_options.reduce((sum, o) => sum + o.votes.length, 0),
-              author: s.profiles.username,
+              name: s.name,
+              text: s.name, // Keep backwards compatibility
+              votes: s.food_votes?.length || 0,
+              author: s.profiles?.username || 'Unknown',
               timestamp: new Date(s.created_at).toISOString(),
-              options: s.suggestion_options.map(o => ({
-                id: o.id,
-                text: o.text,
-                votes: o.votes.length,
-                voters: o.votes.map(v => v.profile_id)
-              }))
+              food_votes: s.food_votes || []
             }));
             
-            updateRoom({
-              ...currentRoom,
+            // Use getState() to avoid function dependency
+            useAppStore.getState().updateRoom({
+              ...currentRoomData,
               suggestions: formattedSuggestions
             });
           }
@@ -164,7 +160,7 @@ export function useRoomSubscription(roomId: string | null) {
     return () => {
       roomSubscription.unsubscribe();
     };
-  }, [roomId, currentRoom, updateRoom]);
+  }, [roomId]); // Only depend on roomId - no store functions
 
   return { loading, error };
 }
