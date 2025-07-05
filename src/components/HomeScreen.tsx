@@ -28,6 +28,7 @@ export function HomeScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const isMounted = useRef(true);
+  const hasLoadedRooms = useRef(false); // Track if we've already loaded rooms
   
   // Hook to detect when an element is in the viewport for lazy loading
   const useOnScreen = (ref: RefObject<HTMLElement>) => {
@@ -48,36 +49,11 @@ export function HomeScreen() {
     return isIntersecting;
   };
   
-  const recentRoomsRef = useRef<HTMLDivElement>(null);
-  const isRecentRoomsVisible = useOnScreen(recentRoomsRef);
+  // Removed lazy loading for RecentRooms as it's a critical component
 
   useEffect(() => {
     // Set isMounted to true when the component mounts
     isMounted.current = true;
-    
-    // Force reload recent rooms when the component mounts
-    const loadRecentRooms = async () => {
-      if (auth.user) {
-        console.log('HomeScreen mounted - forcing reload of recent rooms');
-        setIsLoading(true);
-        try {
-          // Use getState to avoid function dependency
-          const { fetchRecentRooms } = useAppStore.getState();
-          await fetchRecentRooms();
-        } catch (error) {
-          console.error('Error loading recent rooms on mount:', error);
-        } finally {
-          if (isMounted.current) {
-            setIsLoading(false);
-          }
-        }
-      }
-    };
-    
-    // Only load rooms if the user ID exists
-    if (auth.user?.id) {
-      loadRecentRooms();
-    }
     
     // Check for user's preferred color scheme
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -104,7 +80,34 @@ export function HomeScreen() {
       isMounted.current = false;
       darkModeMediaQuery.removeEventListener('change', handleColorSchemeChange);
     };
-  }, [auth.user?.id]); // Only depend on the user's ID, not the whole user object
+  }, []); // Remove dependency to prevent reloading on navigation
+
+  // Separate effect for loading recent rooms only when needed
+  useEffect(() => {
+    const loadRecentRooms = async () => {
+      if (auth.user && !hasLoadedRooms.current) { // Only load if we haven't loaded yet
+        hasLoadedRooms.current = true; // Mark as loading to prevent multiple calls
+        setIsLoading(true);
+        try {
+          // Use getState to avoid function dependency
+          const { fetchRecentRooms } = useAppStore.getState();
+          await fetchRecentRooms();
+        } catch (error) {
+          console.error('Error loading recent rooms on mount:', error);
+          hasLoadedRooms.current = false; // Reset on error so we can retry
+        } finally {
+          if (isMounted.current) {
+            setIsLoading(false);
+          }
+        }
+      }
+    };
+    
+    // Only load rooms if the user ID exists and we haven't loaded yet
+    if (auth.user?.id) {
+      loadRecentRooms();
+    }
+  }, [auth.user?.id]); // Only depend on user ID, not rooms length to prevent loops
 
   useEffect(() => {
     // Save dark mode preference to localStorage
@@ -127,12 +130,7 @@ export function HomeScreen() {
   // Find active room for the RecentRooms component
   const activeRoom = recentRooms.find(room => room.isActive);
   
-  // Debug logging for recent rooms (development only)
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('HomeScreen - Loaded', recentRooms.length, 'recent rooms');
-    }
-  }, [recentRooms.length]); // Only depend on length
+  // Debug logging for recent rooms (development only) - removed to prevent console spam
 
   const getFirstName = (username: string) => {
     return username?.split(' ')[0] || username || 'Friend';
@@ -247,17 +245,13 @@ export function HomeScreen() {
           {/* Primary Action Cards */}
           <ActionCards darkMode={darkMode} />
           
-          {/* Recent Rooms Section with lazy loading */}
-          <div ref={recentRoomsRef}>
-            {isRecentRoomsVisible && (
+          {/* Recent Rooms Section */}
               <RecentRooms
                 rooms={recentRooms}
                 activeRoom={activeRoom}
                 isLoading={isLoading}
                 darkMode={darkMode}
               />
-            )}
-          </div>
         </div>
       </div>
     </motion.div>

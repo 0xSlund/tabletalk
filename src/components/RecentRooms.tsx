@@ -21,6 +21,12 @@ export function RecentRooms({ rooms, activeRoom, isLoading, darkMode = false }: 
   const navigate = useNavigate();
   const [currentIcon, setCurrentIcon] = useState(0);
   const [currentPage, setCurrentPage] = useState(0);
+  
+  // Persist some state to localStorage to prevent button flickering during navigation
+  const [persistedRoomCount, setPersistedRoomCount] = useState(() => {
+    const saved = localStorage.getItem('tabletalk-room-count');
+    return saved ? parseInt(saved, 10) : 0;
+  });
   const foodIcons = [
     Pizza, Utensils, Coffee, IceCream, Sandwich, 
     Apple, Cake, Cherry, Cookie, Croissant, 
@@ -39,6 +45,25 @@ export function RecentRooms({ rooms, activeRoom, isLoading, darkMode = false }: 
   const recentRooms = filteredRooms.slice(0, maxRooms);
   const totalPages = Math.ceil(recentRooms.length / roomsPerPage);
   const currentRooms = recentRooms.slice(currentPage * roomsPerPage, (currentPage + 1) * roomsPerPage);
+  
+  // Calculate total rooms for UI conditions - use consistent source
+  const totalRoomsCount = rooms.length;
+  const hasMoreThanOnePage = totalPages > 1;
+  
+  // Update persisted room count when we have real data
+  useEffect(() => {
+    if (!isLoading && totalRoomsCount > 0) {
+      setPersistedRoomCount(totalRoomsCount);
+      localStorage.setItem('tabletalk-room-count', totalRoomsCount.toString());
+    }
+  }, [isLoading, totalRoomsCount]);
+  
+  // Use the higher of current or persisted count to prevent flickering
+  const effectiveRoomCount = Math.max(totalRoomsCount, persistedRoomCount);
+  
+  // Persist button visibility state to prevent flickering during navigation
+  const shouldShowViewAllButton = effectiveRoomCount > 3;
+  const shouldShowPagination = !isLoading && hasMoreThanOnePage;
   
   // Navigation functions
   const goToPreviousPage = () => {
@@ -156,12 +181,14 @@ export function RecentRooms({ rooms, activeRoom, isLoading, darkMode = false }: 
     };
   }, []);
 
-  // Debug log the rooms (only in development)
+  // Reset current page when rooms change to prevent being stuck on non-existent pages
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('RecentRooms received:', rooms.length, 'rooms');
+    if (currentPage >= totalPages && totalPages > 0) {
+      setCurrentPage(0);
     }
-  }, [rooms.length]); // Only depend on length to avoid excessive logging
+  }, [totalPages, currentPage]);
+
+  // Debug log the rooms (only in development) - removed to prevent console spam
 
   // Function to render a room card - extracted to avoid code duplication
   const renderRoomCard = (room, isActiveHighlighted = false) => (
@@ -173,7 +200,6 @@ export function RecentRooms({ rooms, activeRoom, isLoading, darkMode = false }: 
       onClick={() => {
         // Store the room ID in localStorage to help with navigation
         localStorage.setItem('tabletalk-last-room-id', room.id);
-        console.log('Setting last room ID:', room.id);
       }}
     >
       <motion.div
@@ -280,7 +306,7 @@ export function RecentRooms({ rooms, activeRoom, isLoading, darkMode = false }: 
         <h2 id="recent-rooms" className={`text-xl font-semibold flex items-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>
           <Clock className="w-5 h-5 mr-2 text-primary" />
           Recent Rooms
-          {!isLoading && rooms.length > roomsPerPage && (
+          {shouldShowViewAllButton && (
             <button
               onClick={() => navigate('/history')}
               className={`ml-4 flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
@@ -295,7 +321,7 @@ export function RecentRooms({ rooms, activeRoom, isLoading, darkMode = false }: 
           )}
         </h2>
         
-        {!isLoading && totalPages > 1 && (
+        {shouldShowPagination && (
           <div className="flex items-center gap-2">
             <motion.button
               onClick={goToPreviousPage}

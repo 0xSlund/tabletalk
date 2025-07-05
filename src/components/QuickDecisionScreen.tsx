@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { 
-  UtensilsCrossed, ArrowLeft, Zap, RefreshCw, Loader2, Filter, Check, 
-  DollarSign, MapPin, Heart, Share2, Save, X, ChevronLeft, ChevronRight,
+  UtensilsCrossed, Zap, RefreshCw, Filter, Check, 
+  DollarSign, MapPin, Heart, Share2, X, ChevronLeft, ChevronRight,
   Utensils, Smile, AlertTriangle, BookmarkPlus, BookmarkCheck, Home,
-  Coffee, Soup, Cake, Apple, SunSnow, Salad, SidebarClose
+  Coffee, Soup, Cake, Apple, SunSnow, SidebarClose
 } from 'lucide-react';
 import { useAppStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
@@ -169,17 +169,17 @@ const dietaryRestrictionOptions: DietaryRestrictionOption[] = [
 ];
 
 export function QuickDecisionScreen() {
-  const { setActiveTab, auth: { user } } = useAppStore();
+  const { auth: { user } } = useAppStore();
   const [suggestions, setSuggestions] = useState<SuggestionType[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isExiting, setIsExiting] = useState(false);
+  const [isExiting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [savingToFavorites, setSavingToFavorites] = useState(false);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [showNarrowedDown, setShowNarrowedDown] = useState(false);
-  const [shareURL, setShareURL] = useState<string | null>(null);
+
   const [showFilters, setShowFilters] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const cardControls = useAnimation();
@@ -234,14 +234,6 @@ export function QuickDecisionScreen() {
       setIsGenerating(false);
     }
   };
-
-  const handleNavigate = (tab: string) => {
-    setIsExiting(true);
-    setTimeout(() => {
-      setActiveTab(tab as any);
-    }, 300);
-  };
-  
   const handleSwipe = (direction: 'left' | 'right') => {
     if (!cardRef.current || isGenerating) return;
     
@@ -366,7 +358,6 @@ export function QuickDecisionScreen() {
     } else {
       // Fallback to copy to clipboard
       const dummyUrl = `${window.location.origin}/recipe/${suggestion.recipe_id}`;
-      setShareURL(dummyUrl);
       navigator.clipboard.writeText(`${shareText} ${dummyUrl}`);
       setShowShareMenu(true);
       setTimeout(() => setShowShareMenu(false), 3000);

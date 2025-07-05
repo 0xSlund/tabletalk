@@ -73,6 +73,7 @@ interface AppState {
   auth: AuthState;
   isViewingCompletedRoom: boolean;
   hasVotedOnAll: boolean;
+  previousPage?: string;
   setActiveTab: (tab: AppState['activeTab']) => void;
   updateRoom: (room: ActiveRoom) => void;
   setUser: (user: Profile | null) => void;
@@ -122,6 +123,7 @@ export const useAppStore = create<AppState>()(
       },
       isViewingCompletedRoom: false,
       hasVotedOnAll: false,
+      previousPage: undefined,
       setActiveTab: (tab) => set({ activeTab: tab }),
       updateRoom: (room) => set({ currentRoom: room }),
       setUser: (user) => set((state) => ({ auth: { ...state.auth, user } })),
@@ -177,44 +179,13 @@ export const useAppStore = create<AppState>()(
         if (!auth.user) return;
         
         try {
-          console.log("fetchRecentRooms: Starting to fetch rooms for user", auth.user.id);
           
-          // Get rooms where the user is a participant within the last 30 days (reduced from all time)
+          // Get recent rooms with a single optimized query using joins
+          // Limit to last 30 days and max 20 rooms for performance
           const thirtyDaysAgo = new Date();
           thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
           
-          const { data: participations, error: participationsError } = await supabase
-            .from('room_participants')
-            .select('room_id, is_host, joined_at')
-            .eq('profile_id', auth.user.id)
-            .gte('joined_at', thirtyDaysAgo.toISOString()) // Limit to last 30 days to reduce number of rooms
-            .order('joined_at', { ascending: false });
-            
-          if (participationsError) {
-            console.error('Error fetching participations:', participationsError);
-            return;
-          }
-          
-          if (!participations || participations.length === 0) {
-            console.log('No participations found for user');
-            set({ recentRooms: [] });
-            return;
-          }
-          
-          console.log(`Found ${participations.length} participations for user`);
-          
-          // If we have too many room IDs, we need to batch the requests
-          // Supabase has URL length limits
-          const roomIds = participations.map(p => p.room_id);
-          const BATCH_SIZE = 10; // Process rooms in smaller batches
-          let allRooms = [];
-          
-          // Process rooms in batches
-          for (let i = 0; i < roomIds.length; i += BATCH_SIZE) {
-            const batchIds = roomIds.slice(i, i + BATCH_SIZE);
-            console.log(`Fetching batch ${i/BATCH_SIZE + 1} of ${Math.ceil(roomIds.length/BATCH_SIZE)}, with ${batchIds.length} rooms`);
-            
-            const { data: roomsBatch, error: roomsError } = await supabase
+          const { data: rooms, error } = await supabase
               .from('rooms')
               .select(`
                 id,
@@ -222,60 +193,62 @@ export const useAppStore = create<AppState>()(
                 code,
                 created_at,
                 expires_at,
-                room_participants (id),
+              room_participants!inner (
+                profile_id,
+                joined_at
+              ),
                 voting_results (
-                  id,
-                  suggestion_id,
-                  winning_option_id,
-                  votes_count,
-                  suggestion_options (id, text)
-                )
-              `)
-              .in('id', batchIds)
-              .order('created_at', { ascending: false });
-              
-            if (roomsError) {
-              console.error(`Error fetching rooms batch ${i/BATCH_SIZE + 1}:`, roomsError);
-              continue; // Continue with next batch even if this one fails
-            }
+                suggestion_options (text)
+              )
+            `)
+            .eq('room_participants.profile_id', auth.user.id)
+            .gte('room_participants.joined_at', thirtyDaysAgo.toISOString())
+            .order('created_at', { ascending: false })
+            .limit(20); // Limit to 20 most recent rooms for better performance
             
-            if (roomsBatch && roomsBatch.length > 0) {
-              allRooms = [...allRooms, ...roomsBatch];
-            }
-          }
-          
-          if (allRooms.length === 0) {
-            console.log('No rooms found for user participation');
+          if (error) {
+            console.error('Error fetching rooms:', error);
             set({ recentRooms: [] });
             return;
           }
           
-          console.log(`Successfully fetched ${allRooms.length} rooms for user`);
+          if (!rooms || rooms.length === 0) {
+            set({ recentRooms: [] });
+            return;
+          }
           
-          const formattedRooms = allRooms.map(room => {
+          // Get participant counts in a separate optimized query
+          const roomIds = rooms.map(room => room.id);
+          const { data: participantCounts } = await supabase
+            .from('room_participants')
+            .select('room_id')
+            .in('room_id', roomIds);
+          
+          // Count participants per room
+          const participantCountMap = {};
+          if (participantCounts) {
+            participantCounts.forEach(p => {
+              participantCountMap[p.room_id] = (participantCountMap[p.room_id] || 0) + 1;
+            });
+          }
+          
+          const formattedRooms = rooms.map(room => {
             const now = new Date();
             const expiresAt = new Date(room.expires_at);
-            
-            // Check if the room is expired by time
-            const expiredByTime = expiresAt <= now;
-            
-            // A room is considered active if it hasn't expired by time
-            const isActive = !expiredByTime;
-            
-            console.log(`Room ${room.id} - "${room.name}" status: expires ${expiresAt.toISOString()}, showing as: ${isActive ? 'active' : 'completed'}`);
+            const isActive = expiresAt > now;
             
             let winningChoice;
             if (room.voting_results && room.voting_results.length > 0) {
-              const latestResult = room.voting_results[0];
-              if (latestResult.suggestion_options && latestResult.suggestion_options.length > 0) {
-                winningChoice = latestResult.suggestion_options[0].text;
+              const firstResult = room.voting_results[0];
+              if (firstResult.suggestion_options && firstResult.suggestion_options.length > 0) {
+                winningChoice = firstResult.suggestion_options[0].text;
               }
             }
             
             return {
               id: room.id,
               name: room.name,
-              participants: room.room_participants?.length || 0,
+              participants: participantCountMap[room.id] || 1,
               lastActive: room.created_at,
               isActive,
               expiresAt: room.expires_at,
@@ -284,10 +257,11 @@ export const useAppStore = create<AppState>()(
             };
           });
           
-          console.log('Setting recentRooms with formatted rooms:', formattedRooms);
           set({ recentRooms: formattedRooms });
         } catch (error) {
           console.error('Error fetching recent rooms:', error);
+          // Set empty array on error so UI doesn't stay in loading state
+          set({ recentRooms: [] });
         }
       },
       
@@ -416,14 +390,8 @@ export const useAppStore = create<AppState>()(
           // Store the room ID in localStorage for navigation purposes
           localStorage.setItem('tabletalk-last-room-id', createdRoom.id);
           
-          // Fetch recent rooms after a small delay to ensure the database has updated
-          setTimeout(async () => {
-            try {
-              await get().fetchRecentRooms();
-            } catch (e) {
-              console.error("Error fetching recent rooms:", e);
-            }
-          }, 500);
+          // Don't automatically fetch recent rooms here to prevent loops
+          // The UI will update when the user navigates back to home
           
           return { roomId: createdRoom.id, roomCode: createdRoom.code };
         } catch (error) {

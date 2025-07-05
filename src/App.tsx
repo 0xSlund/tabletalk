@@ -126,6 +126,8 @@ function App() {
           <Route path="/profile" element={<ProfileScreen />} />
           <Route path="/active-room" element={<ActiveRoomScreen />} />
           <Route path="/active-room/:roomCode" element={<ActiveRoomScreen />} />
+          <Route path="/completed-room/:roomCode" element={<ActiveRoomScreen roomType="completed" />} />
+          <Route path="/expired-room/:roomCode" element={<ActiveRoomScreen roomType="expired" />} />
           <Route path="/security" element={<SecuritySettings />} />
           <Route path="/history" element={<RoomHistoryScreen />} />
           <Route path="/dietary" element={<DietaryPreferencesScreen />} />

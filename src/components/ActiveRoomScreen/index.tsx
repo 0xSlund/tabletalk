@@ -26,7 +26,7 @@ import { RoomProvider, useRoomContext } from './contexts/RoomContext';
 // This is the new component that will render the actual room content
 const ActiveRoomView = () => {
   const navigate = useNavigate();
-  const { currentRoom } = useAppStore();
+  const { currentRoom, previousPage } = useAppStore();
   const { roomExpired } = useRoomContext();
 
   // Get theme colors based on room's food mode
@@ -60,7 +60,15 @@ const ActiveRoomView = () => {
   
   const navigateToHome = () => {
     setIsExiting(true);
-    setTimeout(() => navigate('/'), 300);
+    // Clear the previousPage flag and navigate back to where we came from
+    useAppStore.setState(state => ({ ...state, previousPage: undefined }));
+    setTimeout(() => {
+      if (previousPage === 'room-history') {
+        navigate('/history');
+      } else {
+        navigate('/');
+      }
+    }, 300);
   };
   
   const handleResolveTie = (winnerId: string) => {
@@ -170,7 +178,11 @@ const ActiveRoomView = () => {
   );
 };
 
-export function ActiveRoomScreen() {
+interface ActiveRoomScreenProps {
+  roomType?: 'active' | 'completed' | 'expired';
+}
+
+export function ActiveRoomScreen({ roomType = 'active' }: ActiveRoomScreenProps) {
   const { currentRoom } = useAppStore();
   const [roomLoaded, setRoomLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
