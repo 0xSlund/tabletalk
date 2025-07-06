@@ -354,7 +354,7 @@ export const RoomNameInput: React.FC<RoomNameInputProps> = ({
   };
 
   return (
-    <motion.div variants={itemVariants} className="space-y-2">
+    <motion.div variants={itemVariants} className="space-y-2 relative">
       <label className="block text-sm font-medium text-gray-700">Room Name</label>
       
       <div className="relative" ref={inputContainerRef}>
@@ -369,7 +369,7 @@ export const RoomNameInput: React.FC<RoomNameInputProps> = ({
           placeholder=" " // Empty placeholder as we use the overlay
           disabled={isCreating}
           className={`w-full px-4 py-3 border ${error ? 'border-red-500' : isValidInput ? 'border-blue-300' : 'border-gray-300'} 
-            rounded-lg focus:ring-2 ${isValidInput ? 'focus:ring-blue-200' : 'focus:ring-primary'} focus:border-transparent 
+            ${dropdownOpen ? 'rounded-t-lg border-b-0' : 'rounded-lg'} focus:ring-2 ${isValidInput ? 'focus:ring-blue-200' : 'focus:ring-primary'} focus:border-transparent 
             transition-all ${isCreating ? 'bg-gray-100 cursor-not-allowed' : ''} 
             ${getTextColorClass()} font-medium`}
         />
@@ -430,19 +430,15 @@ export const RoomNameInput: React.FC<RoomNameInputProps> = ({
         </div>
       </div>
       
-      {/* Dropdown with suggestions - Position exactly below input with identical width */}
+      {/* Dropdown with suggestions - Position absolutely to overlay content */}
       <AnimatePresence>
         {dropdownOpen && !isCreating && (
           <motion.div
             ref={dropdownRef}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: { duration: 0.15 } }}
-            className="relative z-10 w-full border border-gray-200 rounded-lg shadow-lg overflow-hidden bg-white"
-            style={{ 
-              width: inputContainerRef.current?.offsetWidth + 'px',
-              marginTop: '1px'
-            }}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10, transition: { duration: 0.15 } }}
+            className="absolute top-full left-0 z-20 w-full border-l border-r border-b border-gray-200 rounded-b-lg shadow-lg overflow-hidden bg-white"
           >
             {/* Dropdown header */}
             <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200">

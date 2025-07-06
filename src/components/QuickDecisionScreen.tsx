@@ -4,17 +4,19 @@ import {
   UtensilsCrossed, Zap, RefreshCw, Filter, Check, 
   DollarSign, MapPin, Heart, Share2, X, ChevronLeft, ChevronRight,
   Utensils, Smile, AlertTriangle, BookmarkPlus, BookmarkCheck, Home,
-  Coffee, Soup, Cake, Apple, SunSnow, SidebarClose
+  Coffee, Soup, Cake, Apple, SunSnow, SidebarClose, ChefHat, Store, Search
 } from 'lucide-react';
 import { useAppStore } from '../lib/store';
-import { supabase } from '../lib/supabase';
+import { supabase, fetchFilteredRecipes } from '../lib/supabase';
 import { cn, pageTransitionVariants } from '../lib/utils';
 import { fadeVariants, foodCardVariants } from './PageTransition';
 import { MealType, FilteredRecipe } from '../lib/database.functions';
 import BackButton from './BackButton';
+import SkeletonLoader from './SkeletonLoader';
 
 type MoodType = 'all' | 'comfort_food' | 'healthy' | 'indulgent' | 'light' | 'hearty' | 'exotic' | 'familiar';
 type DietaryRestrictionType = 'vegetarian' | 'vegan' | 'gluten_free' | 'dairy_free' | 'nut_free';
+type DiningOptionType = 'both' | 'home' | 'eating_out';
 
 interface SuggestionType extends FilteredRecipe {}
 
@@ -38,6 +40,13 @@ interface DietaryRestrictionOption {
   icon: React.ReactNode;
 }
 
+interface DiningOption {
+  value: DiningOptionType;
+  label: string;
+  description: string;
+  icon: React.ReactNode;
+}
+
 const filterOptions: FilterOption[] = [
   {
     value: 'all',
@@ -52,16 +61,10 @@ const filterOptions: FilterOption[] = [
     icon: <Coffee className="w-6 h-6" />
   },
   {
-    value: 'lunch',
-    label: 'Lunch',
-    description: 'Midday meals and light options',
+    value: 'main_course',
+    label: 'Main Course',
+    description: 'Hearty main dishes for lunch or dinner',
     icon: <Utensils className="w-6 h-6" />
-  },
-  {
-    value: 'dinner',
-    label: 'Dinner',
-    description: 'Evening meals and main courses',
-    icon: <SunSnow className="w-6 h-6" />
   },
   {
     value: 'dessert',
@@ -80,12 +83,6 @@ const filterOptions: FilterOption[] = [
     label: 'Soups & Salads',
     description: 'Light and refreshing options',
     icon: <Soup className="w-6 h-6" />
-  },
-  {
-    value: 'side_dishes',
-    label: 'Side Dishes',
-    description: 'Complementary dishes',
-    icon: <SidebarClose className="w-6 h-6" />
   }
 ];
 
@@ -168,72 +165,229 @@ const dietaryRestrictionOptions: DietaryRestrictionOption[] = [
   }
 ];
 
+const diningOptions: DiningOption[] = [
+  {
+    value: 'home',
+    label: 'Eating at Home',
+    description: 'Recipes you can cook at home',
+    icon: <ChefHat className="w-6 h-6" />
+  },
+  {
+    value: 'eating_out',
+    label: 'Dining Out',
+    description: 'Restaurants and takeout options',
+    icon: <Store className="w-6 h-6" />
+  },
+  {
+    value: 'both',
+    label: 'Both',
+    description: 'Home cooking and dining out options',
+    icon: <UtensilsCrossed className="w-6 h-6" />
+  }
+];
+
+// Simple cache for AI food suggestions
+const suggestionCache = new Map<string, { data: SuggestionType[], timestamp: number }>();
+const SUGGESTION_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+
 export function QuickDecisionScreen() {
   const { auth: { user } } = useAppStore();
   const [suggestions, setSuggestions] = useState<SuggestionType[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(true); // Start with loading state
   const [isExiting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [savingToFavorites, setSavingToFavorites] = useState(false);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [showNarrowedDown, setShowNarrowedDown] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   const [showFilters, setShowFilters] = useState(false);
+  const [activeToggle, setActiveToggle] = useState<'meal' | 'dietary'>('meal');
   const cardRef = useRef<HTMLDivElement>(null);
   const cardControls = useAnimation();
+  const abortControllerRef = useRef<AbortController | null>(null);
   
   // Filters
   const [selectedFilter, setSelectedFilter] = useState<MealType>('all');
   const [selectedMood, setSelectedMood] = useState<MoodType>('all');
-  const [priceRange, setPriceRange] = useState<number>(4); // 1-4, representing $ to $$$$
-  const [maxDistance, setMaxDistance] = useState<number>(20); // in miles or km
+  const [moodEnabled, setMoodEnabled] = useState<boolean>(false);
+  const [diningOption, setDiningOption] = useState<DiningOptionType>('both');
+  const [priceRange, setPriceRange] = useState<number>(2); // 1-4, representing $ to $$$$, default $$
+  const [maxDistance, setMaxDistance] = useState<number>(25); // in miles or km, default 25
   const [dietaryRestrictions, setDietaryRestrictions] = useState<DietaryRestrictionType[]>([]);
   
+  // Set mounted state when component mounts
   useEffect(() => {
-    // Reset suggestions when filters change
-    setSuggestions([]);
-    setCurrentIndex(0);
-  }, [selectedFilter, selectedMood, priceRange, maxDistance, dietaryRestrictions]);
-  
-  const getCurrentSuggestion = () => {
-    return suggestions.length > 0 ? suggestions[currentIndex] : null;
-  };
-  
-  const generateSuggestion = async (count: number = 1) => {
-    setIsGenerating(true);
-    setSuggestions([]);
-    setError(null);
-    setCurrentIndex(0);
-    setShowNarrowedDown(count > 1);
-
-    try {
-      // Call the database function with all filters
-      const { data, error: dbError } = await supabase
-        .rpc('get_filtered_recipes', { 
-          p_meal_type: selectedFilter === 'all' ? null : selectedFilter,
-          p_user_id: user?.id,
-          p_price_range: priceRange,
-          p_max_distance: maxDistance,
-          p_mood: selectedMood === 'all' ? null : selectedMood,
-          p_limit: count
-        });
-
-      if (dbError) throw dbError;
-
-      if (data && data.length > 0) {
-        setSuggestions(data);
-      } else {
-        setError('No suggestions found for the selected criteria. Try different filters!');
+    setMounted(true);
+    return () => {
+      setMounted(false);
+      // Cancel any pending requests
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
+      // Clear cache on unmount
+      suggestionCache.clear();
+    };
+  }, []);
+
+  // Initial load effect
+  useEffect(() => {
+    if (mounted && isInitialLoad) {
+      console.log('Starting initial load of AI Food Assistant');
+      generateSuggestion(3, false); // Start with 3 suggestions for faster initial load
+    }
+  }, [mounted, isInitialLoad]);
+
+  const getCurrentSuggestion = () => {
+    return suggestions[currentIndex] || null;
+  };
+
+  const generateSuggestion = async (count: number = 1, useCache = true) => {
+    if (!mounted) return;
+    
+    console.log(`Generating ${count} suggestions, useCache: ${useCache}`);
+    setIsGenerating(true);
+    setError(null);
+    
+    // Add timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      if (mounted && isGenerating) {
+        console.log('Request timed out, showing error');
+        setError('Request timed out. Please try again.');
+        setIsInitialLoad(false);
+        setIsGenerating(false);
+      }
+    }, 15000); // 15 second timeout
+    
+    try {
+      // Create cache key based on current filters
+      const cacheKey = `${selectedFilter}-${selectedMood}-${priceRange}-${maxDistance}-${dietaryRestrictions.join(',')}`;
+      
+      // Check cache first
+      if (useCache) {
+        const cached = suggestionCache.get(cacheKey);
+        if (cached && (Date.now() - cached.timestamp) < SUGGESTION_CACHE_DURATION) {
+          console.log('Using cached AI food suggestions');
+          setSuggestions(cached.data);
+          setCurrentIndex(0);
+          setIsInitialLoad(false);
+          setIsGenerating(false);
+          clearTimeout(timeoutId);
+          return;
+        }
+      }
+      
+      // Cancel previous request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
+      
+      console.log('Fetching new suggestions from database...');
+      
+      // Fetch new suggestions from database with timeout support
+      const fetchPromise = fetchFilteredRecipes(
+        selectedFilter === 'all' ? null : selectedFilter,
+        user?.id || null,
+        count
+      );
+      
+      // Race between fetch and abort signal
+      const newSuggestions = await Promise.race([
+        fetchPromise,
+        new Promise<FilteredRecipe[]>((_, reject) => {
+          if (abortControllerRef.current) {
+            abortControllerRef.current.signal.addEventListener('abort', () => {
+              reject(new Error('Request aborted'));
+            });
+          }
+        })
+      ]);
+      
+      if (!mounted) {
+        clearTimeout(timeoutId);
+        return;
+      }
+      
+      console.log(`Received ${newSuggestions.length} suggestions`);
+      
+      if (newSuggestions.length === 0) {
+        console.log('No recipes found, showing error message');
+        
+        // If this is the initial load and we're using filters, try without filters as fallback
+        if (isInitialLoad && selectedFilter !== 'all') {
+          console.log('Trying fallback: fetching without meal type filter');
+          const fallbackSuggestions = await fetchFilteredRecipes(null, user?.id || null, count);
+          
+          if (fallbackSuggestions.length > 0) {
+            console.log(`Fallback successful: ${fallbackSuggestions.length} suggestions found`);
+            
+            // Cache the results
+            suggestionCache.set(cacheKey, {
+              data: fallbackSuggestions,
+              timestamp: Date.now()
+            });
+            
+            setSuggestions(fallbackSuggestions);
+            setCurrentIndex(0);
+            setIsInitialLoad(false);
+            
+            // Show a message that we found suggestions but not with the specific filter
+            setSavedMessage('Found suggestions! Try adjusting filters for more specific results.');
+            setTimeout(() => setSavedMessage(null), 4000);
+            
+            console.log('Successfully loaded fallback suggestions');
+            clearTimeout(timeoutId);
+            return;
+          }
+        }
+        
+        setError('No recipes found matching your criteria. Try adjusting your filters or check back later.');
+        setIsInitialLoad(false);
+        setIsGenerating(false);
+        clearTimeout(timeoutId);
+        return;
+      }
+      
+      // Cache the results
+      suggestionCache.set(cacheKey, {
+        data: newSuggestions,
+        timestamp: Date.now()
+      });
+      
+      setSuggestions(newSuggestions);
+      setCurrentIndex(0);
+      setIsInitialLoad(false);
+      
+      console.log('Successfully loaded suggestions');
+      
     } catch (err) {
-      console.error('Error generating suggestion:', err);
-      setError('Failed to get a suggestion. Please try again.');
+      if (!mounted) {
+        clearTimeout(timeoutId);
+        return;
+      }
+      
+      // Check if it was an abort error
+      if (err instanceof Error && err.message === 'Request aborted') {
+        console.log('Request was aborted');
+        clearTimeout(timeoutId);
+        return;
+      }
+      
+      console.error('Error generating AI food suggestions:', err);
+      setError('Failed to generate food suggestions. Please try again.');
+      setIsInitialLoad(false);
     } finally {
-      setIsGenerating(false);
+      clearTimeout(timeoutId);
+      if (mounted) {
+        setIsGenerating(false);
+      }
     }
   };
+
   const handleSwipe = (direction: 'left' | 'right') => {
     if (!cardRef.current || isGenerating) return;
     
@@ -387,12 +541,34 @@ export function QuickDecisionScreen() {
   };
 
   return (
-    <motion.div 
-      className="min-h-screen bg-gradient-to-br from-[#FFFDF9] via-[#FAF8F5] to-[#F3ECE3]"
-      initial="initial"
-      exit="exit"
-        variants={pageTransitionVariants}
-        animate={isExiting ? "exit" : "enter"}
+    <>
+      <style jsx>{`
+        .slider-orange::-webkit-slider-thumb {
+          appearance: none;
+          height: 20px;
+          width: 20px;
+          border-radius: 50%;
+          background: linear-gradient(45deg, #f97316, #f59e0b);
+          cursor: pointer;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          border: 2px solid white;
+        }
+        .slider-orange::-moz-range-thumb {
+          height: 20px;
+          width: 20px;
+          border-radius: 50%;
+          background: linear-gradient(45deg, #f97316, #f59e0b);
+          cursor: pointer;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          border: 2px solid white;
+        }
+      `}</style>
+      <motion.div 
+        className="min-h-screen bg-gradient-to-br from-[#FFFDF9] via-[#FAF8F5] to-[#F3ECE3]"
+        initial="initial"
+        exit="exit"
+          variants={pageTransitionVariants}
+          animate={isExiting ? "exit" : "enter"}
       onTouchStart={e => {
         if (cardRef.current) {
           const touch = e.touches[0];
@@ -423,7 +599,7 @@ export function QuickDecisionScreen() {
           <div className="flex items-center justify-between">
             <BackButton />
             <div className="flex items-center gap-2">
-              <UtensilsCrossed className="w-6 h-6 text-orange-500" />
+              <Zap className="w-6 h-6 text-orange-600" />
               <h1 className="text-2xl font-bold text-gray-900">Quick Decision</h1>
             </div>
             <button
@@ -468,12 +644,12 @@ export function QuickDecisionScreen() {
           </div>
 
           <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            {showNarrowedDown ? "Choose Between These Options" : "Quick Decision"}
+            {showNarrowedDown ? "Choose Between These Options" : "Quick Food Recommendations"}
           </h2>
           <p className="text-gray-600 mb-6">
             {showNarrowedDown 
               ? "We've narrowed it down to just a few choices for you." 
-              : "Can't decide what to eat? Let us make a suggestion!"}
+              : "Can't decide what to eat? Let us help you choose something delicious!"}
           </p>
 
           {/* Saved Message Toast */}
@@ -512,23 +688,26 @@ export function QuickDecisionScreen() {
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                className="flex flex-col items-center justify-center gap-3 min-h-[300px]"
+                className="min-h-[300px]"
               >
-                <motion.div 
-                  animate={{ 
-                    rotate: 360,
-                    borderRadius: ["50% 50% 50% 50%", "40% 60% 60% 40%", "50% 50% 50% 50%"]
-                  }}
-                  transition={{ 
-                    duration: 2, 
-                    repeat: Infinity,
-                    ease: "linear" 
-                  }}
-                  className="w-16 h-16 bg-gradient-to-br from-orange-400 to-red-500"
-                />
-                <span className="text-gray-500 font-medium mt-4">
-                  Finding the perfect meal...
-                </span>
+                <SkeletonLoader variant="recipe" />
+                <div className="flex flex-col items-center justify-center gap-3 mt-6">
+                  <motion.div 
+                    animate={{ 
+                      rotate: 360,
+                      borderRadius: ["50% 50% 50% 50%", "40% 60% 60% 40%", "50% 50% 50% 50%"]
+                    }}
+                    transition={{ 
+                      duration: 2, 
+                      repeat: Infinity,
+                      ease: "linear" 
+                    }}
+                    className="w-8 h-8 bg-gradient-to-br from-orange-400 to-red-500"
+                  />
+                  <span className="text-gray-500 font-medium">
+                    Finding the perfect meal for you...
+                  </span>
+                </div>
               </motion.div>
             ) : error ? (
               <motion.div
@@ -537,18 +716,42 @@ export function QuickDecisionScreen() {
                 initial="hidden"
                 animate="visible"
                 exit="exit"
-                className="text-red-500 mb-4"
+                className="text-center"
               >
-                {error}
-                <motion.button
-                  onClick={() => generateSuggestion()}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full bg-orange-500 text-white py-3 rounded-xl font-medium hover:bg-orange-600 transition-colors flex items-center justify-center gap-2 mt-4"
-                >
-                  <RefreshCw className="w-5 h-5" />
-                  Try Again
-                </motion.button>
+                <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-4">
+                  <div className="flex items-center justify-center mb-3">
+                    <AlertTriangle className="w-8 h-8 text-red-500" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-red-800 mb-2">Oops! Something went wrong</h3>
+                  <p className="text-red-600 mb-4">{error}</p>
+                  <div className="space-y-2">
+                    <motion.button
+                      onClick={() => generateSuggestion(1, false)}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="w-full bg-red-500 text-white py-3 rounded-xl font-medium hover:bg-red-600 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <RefreshCw className="w-5 h-5" />
+                      Try Again
+                    </motion.button>
+                    <motion.button
+                      onClick={() => {
+                        setSelectedFilter('all');
+                        setSelectedMood('all');
+                        setMoodEnabled(false);
+                        setDiningOption('both');
+                        setDietaryRestrictions([]);
+                        generateSuggestion(1, false);
+                      }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="w-full bg-gray-500 text-white py-3 rounded-xl font-medium hover:bg-gray-600 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <UtensilsCrossed className="w-5 h-5" />
+                      Reset Filters & Try
+                    </motion.button>
+                  </div>
+                </div>
               </motion.div>
             ) : suggestions.length > 0 ? (
               <div>
@@ -766,146 +969,339 @@ export function QuickDecisionScreen() {
                 transition={{ type: "spring", bounce: 0, duration: 0.4 }}
                 className="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-xl z-30 overflow-y-auto"
               >
-                <div className="p-6">
+                <div className="p-6 bg-gradient-to-br from-orange-50 to-amber-50 min-h-full">
                   <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold text-gray-900">Filters</h2>
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-orange-100 rounded-full">
+                        <Filter className="w-5 h-5 text-orange-600" />
+                      </div>
+                      <h2 className="text-xl font-bold text-gray-900">Customize Your Search</h2>
+                    </div>
                     <button
                       onClick={() => setShowFilters(false)}
-                      className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                      className="p-2 rounded-full hover:bg-white/50 transition-colors"
                     >
                       <X className="w-5 h-5 text-gray-500" />
                     </button>
                   </div>
                   
-                  {/* Meal Type Section */}
-                  <div className="mb-8">
-                    <h3 className="text-md font-medium text-gray-900 mb-4">Meal Type</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      {filterOptions.map((option) => (
+                  {/* Dining Options Section */}
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <UtensilsCrossed className="w-5 h-5 text-orange-600" />
+                      Where are you dining?
+                    </h3>
+                    <div className="grid grid-cols-1 gap-3">
+                      {diningOptions.map((option) => (
                         <motion.button
                           key={option.value}
-                          onClick={() => setSelectedFilter(option.value)}
+                          onClick={() => setDiningOption(option.value)}
                           className={cn(
-                            "relative flex items-center gap-3 py-3 px-4 rounded-xl",
-                            selectedFilter === option.value
-                              ? "bg-orange-100 text-orange-600"
-                              : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                            "relative flex items-center gap-4 p-4 rounded-2xl border-2 transition-all",
+                            diningOption === option.value
+                              ? "bg-orange-50 border-orange-200 text-orange-700"
+                              : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300"
                           )}
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                         >
                           <div className={cn(
-                            "p-2 rounded-full",
-                            selectedFilter === option.value ? "bg-orange-200" : "bg-white"
+                            "p-3 rounded-xl",
+                            diningOption === option.value ? "bg-orange-100" : "bg-gray-100"
                           )}>
                             {option.icon}
                           </div>
                           <div className="flex-1 text-left">
-                            <p className="font-medium text-sm">{option.label}</p>
+                            <p className="font-semibold text-base">{option.label}</p>
+                            <p className="text-sm opacity-80">{option.description}</p>
                           </div>
-                          {selectedFilter === option.value && (
-                            <Check className="w-4 h-4 text-orange-600" />
+                          {diningOption === option.value && (
+                            <div className="p-1 bg-orange-400 rounded-full">
+                              <Check className="w-4 h-4 text-white" />
+                            </div>
                           )}
                         </motion.button>
                       ))}
                     </div>
                   </div>
                   
-                  {/* Price Range Section */}
-                  <div className="mb-8">
-                    <h3 className="text-md font-medium text-gray-900 mb-4">Price Range</h3>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="range"
-                        min="1"
-                        max="4"
-                        value={priceRange}
-                        onChange={(e) => setPriceRange(Number(e.target.value))}
-                        className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                      />
-                      <div className="flex items-center gap-1 text-gray-700 min-w-[80px]">
-                        {[...Array(priceRange)].map((_, i) => (
-                          <DollarSign key={i} className="w-4 h-4 text-green-600" />
-                        ))}
-                        {[...Array(4 - priceRange)].map((_, i) => (
-                          <DollarSign key={i + priceRange} className="w-4 h-4 text-gray-300" />
-                        ))}
+                  {/* Meal Type & Dietary Toggle Section */}
+                  <div className="mb-4">
+                    {/* Toggle Header */}
+                    <div className="bg-white rounded-2xl p-2 border-2 border-gray-200 mb-4">
+                      <div className="flex relative">
+                        <motion.div
+                          className="absolute inset-y-1 bg-gradient-to-r from-orange-400 to-amber-400 rounded-xl shadow-lg"
+                          initial={false}
+                          animate={{
+                            left: activeToggle === 'meal' ? '2px' : '50%',
+                            right: activeToggle === 'meal' ? '50%' : '2px'
+                          }}
+                          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                        />
+                        <button
+                          onClick={() => setActiveToggle('meal')}
+                          className={cn(
+                            "relative z-10 flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold transition-colors",
+                            activeToggle === 'meal' ? "text-white" : "text-gray-600 hover:text-gray-800"
+                          )}
+                        >
+                          <Utensils className="w-5 h-5" />
+                          Meal Type
+                        </button>
+                        <button
+                          onClick={() => setActiveToggle('dietary')}
+                          className={cn(
+                            "relative z-10 flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold transition-colors",
+                            activeToggle === 'dietary' ? "text-white" : "text-gray-600 hover:text-gray-800"
+                          )}
+                        >
+                          <AlertTriangle className="w-5 h-5" />
+                          Dietary
+                        </button>
                       </div>
                     </div>
-                  </div>
-                  
-                  {/* Distance Section */}
-                  <div className="mb-8">
-                    <h3 className="text-md font-medium text-gray-900 mb-4">
-                      Max Distance: {maxDistance} miles
-                    </h3>
-                    <div className="flex items-center gap-3">
-                      <MapPin className="w-5 h-5 text-gray-500" />
-                      <input
-                        type="range"
-                        min="1"
-                        max="50"
-                        value={maxDistance}
-                        onChange={(e) => setMaxDistance(Number(e.target.value))}
-                        className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                      />
-                      <span className="text-sm text-gray-700 min-w-[40px]">{maxDistance}mi</span>
+
+                                        {/* Toggle Content */}
+                    <div className="h-64 overflow-hidden">
+                      <AnimatePresence mode="wait">
+                        {activeToggle === 'meal' ? (
+                          <motion.div
+                            key="meal-content"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 0.3 }}
+                            className="h-full overflow-y-auto"
+                          >
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                              <Utensils className="w-5 h-5 text-orange-600" />
+                              What type of meal?
+                            </h3>
+                            <div className="grid grid-cols-2 gap-2 pr-1">
+                              {filterOptions.map((option) => (
+                                <motion.button
+                                  key={option.value}
+                                  onClick={() => setSelectedFilter(option.value)}
+                                  className={cn(
+                                    "relative flex items-center gap-2 py-2 px-3 rounded-lg border-2 transition-all",
+                                    selectedFilter === option.value
+                                      ? "bg-orange-50 border-orange-200 text-orange-700"
+                                      : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300"
+                                  )}
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                >
+                                  <div className={cn(
+                                    "p-1.5 rounded-full [&>svg]:w-4 [&>svg]:h-4",
+                                    selectedFilter === option.value ? "bg-orange-100" : "bg-gray-100"
+                                  )}>
+                                    {option.icon}
+                                  </div>
+                                  <div className="flex-1 text-left">
+                                    <p className="font-medium text-xs">{option.label}</p>
+                                  </div>
+                                  <div className="w-3 h-3 flex items-center justify-center">
+                                    {selectedFilter === option.value && (
+                                      <Check className="w-3 h-3 text-orange-600" />
+                                    )}
+                                  </div>
+                                </motion.button>
+                              ))}
+                            </div>
+                          </motion.div>
+                        ) : (
+                          <motion.div
+                            key="dietary-content"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 0.3 }}
+                            className="h-full"
+                          >
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                              <AlertTriangle className="w-5 h-5 text-orange-600" />
+                              Dietary Restrictions
+                            </h3>
+                            <div className="grid grid-cols-1 gap-2 pr-1">
+                              {dietaryRestrictionOptions.map((restriction) => (
+                                <motion.button
+                                  key={restriction.value}
+                                  onClick={() => toggleDietaryRestriction(restriction.value)}
+                                  className={cn(
+                                    "py-2 px-3 rounded-lg flex items-center gap-2 border-2 transition-all text-left",
+                                    dietaryRestrictions.includes(restriction.value)
+                                      ? "bg-green-100 border-green-300 text-green-700"
+                                      : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300"
+                                  )}
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                >
+                                  <div className="w-3 h-3 flex items-center justify-center">
+                                    {dietaryRestrictions.includes(restriction.value) && (
+                                      <Check className="w-3 h-3" />
+                                    )}
+                                  </div>
+                                  <span className="font-medium text-xs flex-1">{restriction.label}</span>
+                                </motion.button>
+                              ))}
+                            </div>
+                            {dietaryRestrictions.length === 0 && (
+                              <p className="text-gray-500 text-sm mt-3 text-center py-4 bg-gray-50 rounded-xl">
+                                No dietary restrictions selected
+                              </p>
+                            )}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </div>
                   
-                  {/* Mood Selector */}
-                  <div className="mb-8">
-                    <h3 className="text-md font-medium text-gray-900 mb-4">Mood</h3>
-                    <div className="grid grid-cols-2 gap-2">
-                      {moodOptions.map((mood) => (
-                        <button
-                          key={mood.value}
-                          onClick={() => setSelectedMood(mood.value)}
-                          className={cn(
-                            "py-3 px-4 rounded-lg flex items-center gap-2 text-left",
-                            selectedMood === mood.value
-                              ? "bg-orange-100 text-orange-700"
-                              : "bg-gray-50 text-gray-700 hover:bg-gray-100"
-                          )}
-                        >
-                          <span className={cn(
-                            "p-1.5 rounded-full",
-                            selectedMood === mood.value ? "bg-orange-200" : "bg-white"
-                          )}>
-                            {mood.icon}
+                  {/* Price Range Section - Only show when eating out or both */}
+                  {(diningOption === 'eating_out' || diningOption === 'both') && (
+                    <div className="mb-4">
+                                             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                         <DollarSign className="w-5 h-5 text-orange-600" />
+                         Price Range
+                       </h3>
+                      <div className="bg-white rounded-xl p-4 border-2 border-gray-200">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-sm font-medium text-gray-600">Budget-friendly</span>
+                          <span className="text-sm font-medium text-gray-600">Premium</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="range"
+                            min="1"
+                            max="4"
+                            value={priceRange}
+                            onChange={(e) => setPriceRange(Number(e.target.value))}
+                            className="flex-1 h-3 bg-gradient-to-r from-green-200 to-green-400 rounded-lg appearance-none cursor-pointer slider-orange"
+                          />
+                          <div className="flex items-center gap-1 text-gray-700 min-w-[80px]">
+                            {[...Array(priceRange)].map((_, i) => (
+                              <DollarSign key={i} className="w-4 h-4 text-green-600" />
+                            ))}
+                            {[...Array(4 - priceRange)].map((_, i) => (
+                              <DollarSign key={i + priceRange} className="w-4 h-4 text-gray-300" />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Distance Section - Only show when eating out or both */}
+                  {(diningOption === 'eating_out' || diningOption === 'both') && (
+                    <div className="mb-4">
+                                             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                         <MapPin className="w-5 h-5 text-orange-600" />
+                         Maximum Distance
+                       </h3>
+                      <div className="bg-white rounded-xl p-4 border-2 border-gray-200">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-sm font-medium text-gray-600">Nearby</span>
+                          <span className="text-sm font-medium text-gray-600">Far away</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="range"
+                            min="1"
+                            max="50"
+                            value={maxDistance}
+                            onChange={(e) => setMaxDistance(Number(e.target.value))}
+                            className="flex-1 h-3 bg-gradient-to-r from-blue-200 to-blue-400 rounded-lg appearance-none cursor-pointer slider-orange"
+                          />
+                          <span className="text-sm font-semibold text-gray-700 min-w-[50px] bg-gray-100 px-2 py-1 rounded-lg">
+                            {maxDistance} mi
                           </span>
-                          <span className="font-medium text-sm">{mood.label}</span>
-                          {selectedMood === mood.value && (
-                            <Check className="w-4 h-4 ml-auto" />
-                          )}
-                        </button>
-                      ))}
+                        </div>
+                      </div>
                     </div>
+                  )}
+                  
+                  {/* Mood Toggle */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-4">
+                                             <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                         <Smile className="w-5 h-5 text-orange-600" />
+                         Mood-based suggestions
+                       </h3>
+                      <motion.button
+                        onClick={() => {
+                          const newMoodEnabled = !moodEnabled;
+                          setMoodEnabled(newMoodEnabled);
+                          if (!newMoodEnabled) {
+                            setSelectedMood('all');
+                          }
+                        }}
+                        className={cn(
+                          "relative inline-flex h-8 w-14 items-center rounded-full transition-colors",
+                          moodEnabled ? "bg-gradient-to-r from-orange-400 to-amber-400" : "bg-gray-300"
+                        )}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <motion.span
+                          className="inline-block h-6 w-6 transform rounded-full bg-white shadow-lg"
+                          animate={{
+                            x: moodEnabled ? 32 : 4
+                          }}
+                          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                        />
+                      </motion.button>
+                    </div>
+                    
+                    <AnimatePresence>
+                      {moodEnabled && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.3 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="bg-white rounded-xl p-4 border-2 border-gray-200">
+                            <p className="text-sm text-gray-600 mb-3">What's your mood?</p>
+                            <div className="grid grid-cols-2 gap-3">
+                              {moodOptions.filter(mood => mood.value !== 'all').map((mood) => (
+                                <motion.button
+                                  key={mood.value}
+                                  onClick={() => setSelectedMood(mood.value)}
+                                  className={cn(
+                                    "py-3 px-4 rounded-xl flex items-center gap-3 text-left border-2 transition-all",
+                                    selectedMood === mood.value
+                                      ? "bg-orange-50 border-orange-200 text-orange-700"
+                                      : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300"
+                                  )}
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                >
+                                  <span className={cn(
+                                    "p-2 rounded-full",
+                                    selectedMood === mood.value ? "bg-orange-100" : "bg-gray-100"
+                                  )}>
+                                    {mood.icon}
+                                  </span>
+                                  <span className="font-medium text-sm">{mood.label}</span>
+                                  {selectedMood === mood.value && (
+                                    <Check className="w-4 h-4 ml-auto" />
+                                  )}
+                                </motion.button>
+                              ))}
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                    
+                    {!moodEnabled && (
+                      <p className="text-gray-500 text-sm bg-gray-50 rounded-xl p-4 text-center">
+                        Enable mood-based suggestions to get recommendations that match your current vibe
+                      </p>
+                    )}
                   </div>
                   
-                  {/* Dietary Restrictions */}
-                  <div className="mb-8">
-                    <h3 className="text-md font-medium text-gray-900 mb-4">Dietary Restrictions</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {dietaryRestrictionOptions.map((restriction) => (
-                        <button
-                          key={restriction.value}
-                          onClick={() => toggleDietaryRestriction(restriction.value)}
-                          className={cn(
-                            "py-2 px-4 rounded-full flex items-center gap-2 border",
-                            dietaryRestrictions.includes(restriction.value)
-                              ? "bg-green-100 border-green-300 text-green-700"
-                              : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
-                          )}
-                        >
-                          {dietaryRestrictions.includes(restriction.value) && (
-                            <Check className="w-3.5 h-3.5" />
-                          )}
-                          <span className="font-medium text-sm">{restriction.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+
                   
                   {/* Apply Filters Button */}
                   <motion.button
@@ -915,9 +1311,9 @@ export function QuickDecisionScreen() {
                     }}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="w-full bg-orange-500 text-white py-3 rounded-xl font-medium hover:bg-orange-600 transition-colors flex items-center justify-center gap-2"
+                    className="w-full bg-gradient-to-r from-orange-500 to-amber-500 text-white py-3 rounded-xl font-medium hover:from-orange-600 hover:to-amber-600 transition-all flex items-center justify-center gap-2 shadow-md"
                   >
-                    <Filter className="w-5 h-5" />
+                    <Search className="w-4 h-4" />
                     Apply Filters
                   </motion.button>
                 </div>
@@ -927,5 +1323,6 @@ export function QuickDecisionScreen() {
         </AnimatePresence>
       </main>
     </motion.div>
+    </>
   );
 }

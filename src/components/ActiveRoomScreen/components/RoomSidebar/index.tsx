@@ -501,16 +501,23 @@ export const RoomSidebar: React.FC = () => {
             {/* Share Room Feature - Modern 2025 Design */}
             <div className="relative mt-6">
               <button 
-                onClick={() => setShowShareOptions(!showShareOptions)}
-                className={`w-full py-3.5 px-4 bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-600 hover:to-violet-600 text-white rounded-xl font-medium flex items-center justify-center gap-2 transition-all duration-300 shadow-lg shadow-blue-200/50 ${
-                  showShareOptions ? 'scale-95' : 'scale-100'
+                onClick={() => !isRoomExpired && setShowShareOptions(!showShareOptions)}
+                disabled={isRoomExpired}
+                className={`w-full py-3.5 px-4 rounded-xl font-medium flex items-center justify-center gap-2 transition-all duration-300 ${
+                  isRoomExpired 
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none' 
+                    : `bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-600 hover:to-violet-600 text-white shadow-lg shadow-blue-200/50 ${
+                        showShareOptions ? 'scale-95' : 'scale-100'
+                      }`
                 }`}
               >
                 <Share2 className="w-5 h-5" />
-                <span className="text-base">Share Room</span>
+                <span className="text-base">
+                  {isRoomExpired ? 'Sharing Disabled' : 'Share Room'}
+                </span>
               </button>
               
-              {showShareOptions && (
+              {showShareOptions && !isRoomExpired && (
                 <div
                   ref={shareOptionsRef}
                   className="absolute -top-4 left-0 transform -translate-y-full w-full bg-white/90 backdrop-blur-md rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-20 transition-all duration-300 animate-fadeSlideDown"

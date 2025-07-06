@@ -31,6 +31,7 @@ import {
   DatePickerModal,
   EmptyState
 } from './components';
+import SkeletonLoader from '../SkeletonLoader';
 
 export function RoomHistoryScreen() {
   const navigate = useNavigate();
@@ -62,34 +63,63 @@ export function RoomHistoryScreen() {
   const [favoriteMode, setFavoriteMode] = useState(false);
   const [deleteMode, setDeleteMode] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+  const [navigatingToRoom, setNavigatingToRoom] = useState<string | null>(null);
 
-  // Handle room viewing
+  // Handle room viewing with optimized loading
   const handleViewRoom = async (roomCode: string) => {
-    if (!roomCode) return;
+    if (!roomCode || navigatingToRoom) return;
     
     try {
       console.log('Attempting to view room:', roomCode);
       
-      // Try to join the room (works for both active and expired rooms)
-      const success = await joinRoom(roomCode);
+      // Set loading state for this specific room
+      setNavigatingToRoom(roomCode);
       
-      if (success) {
-        // Set previous page for navigation
-        useAppStore.setState(state => ({
-          ...state,
-          previousPage: 'room-history'
-        }));
+      // Find the room data to determine its status
+      const roomItem = legacyFilteredRooms.find(item => item.rooms.code === roomCode);
+      
+      // Determine the correct route based on room status
+      let routePath = `/active-room/${roomCode}`; // default
+      
+      if (roomItem) {
+        const now = new Date();
+        const expiresAt = new Date(roomItem.rooms.expires_at);
+        const isExpired = expiresAt <= now;
+        const hasResults = Boolean(roomItem.rooms.voting_results && roomItem.rooms.voting_results.length > 0);
         
-        // Always navigate to the active room route - let the ActiveRoomScreen handle the display
-        navigate(`/active-room/${roomCode}`);
-      } else {
-        console.log('Failed to join room:', roomCode);
-        // Show user-friendly error message
-        alert('Unable to load this room. It may have been deleted or you may not have access.');
+        if (isExpired) {
+          if (hasResults) {
+            routePath = `/completed-room/${roomCode}`;
+          } else {
+            routePath = `/expired-room/${roomCode}`;
+          }
+        }
       }
+      
+      console.log(`Navigating to: ${routePath}`);
+      
+      // Pre-load room data for smoother transition
+      const preloadPromise = joinRoom(roomCode);
+      
+      // Set previous page for navigation
+      useAppStore.setState(state => ({
+        ...state,
+        previousPage: 'room-history'
+      }));
+      
+      // Small delay to show loading state, then navigate
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Navigate to the appropriate route
+      navigate(routePath);
+      
+      // Ensure room data is loaded in background
+      await preloadPromise;
     } catch (err) {
       console.error('Error viewing room:', err);
-      alert('An error occurred while trying to view this room.');
+      // Don't show alert for better UX - let ActiveRoomScreen handle errors
+    } finally {
+      setNavigatingToRoom(null);
     }
   };
 
@@ -290,7 +320,7 @@ export function RoomHistoryScreen() {
 
 
   return (
-    <div className={`min-h-screen ${
+    <div className={`min-h-screen transition-colors duration-200 ${
       darkMode 
         ? 'bg-zinc-900' 
         : 'bg-gradient-to-br from-[#FFFDF9] via-[#FAF8F5] to-[#F3ECE3]'
@@ -314,14 +344,12 @@ export function RoomHistoryScreen() {
             </button>
             <div className="flex items-center gap-2">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                darkMode ? 'bg-white' : 'bg-primary'
+                darkMode ? 'bg-orange-500' : 'bg-orange-500'
               }`}>
-                <UtensilsCrossed className={`w-5 h-5 ${
-                  darkMode ? 'text-primary' : 'text-white'
-                }`} />
+                <History className={`w-5 h-5 text-white`} />
               </div>
               <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                All Rooms
+                Room History
               </h1>
             </div>
             <div className="w-4" />
@@ -743,21 +771,14 @@ export function RoomHistoryScreen() {
 
           {/* Room List */}
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-16">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-              >
-                <Loader2 className="w-10 h-10 text-blue-500" />
-              </motion.div>
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className={`mt-4 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}
-              >
-                Loading your room history...
-              </motion.p>
+            <div className="space-y-6">
+              <div className={`flex items-center justify-between text-sm ${
+                darkMode ? 'text-gray-400' : 'text-gray-600'
+              }`}>
+                <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
+                <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
+              </div>
+              <SkeletonLoader variant="grid" count={6} />
             </div>
           ) : legacyFilteredRooms.length === 0 ? (
             <EmptyState
@@ -787,20 +808,20 @@ export function RoomHistoryScreen() {
               <AnimatePresence mode="wait">
                 <motion.div
                   key={`${currentPage}-grid`}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.4, ease: "easeOut" }}
-                                      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
                 >
                   {currentRooms.map((item, index) => (
                     <motion.div
                       key={item.id}
-                      initial={{ opacity: 0, y: 30, scale: 0.9 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
                       transition={{ 
-                        delay: index * 0.08, 
-                        duration: 0.5,
+                        delay: index * 0.03, 
+                        duration: 0.2,
                         ease: "easeOut"
                       }}
                     >
@@ -810,6 +831,7 @@ export function RoomHistoryScreen() {
                         showAdvancedFilters={showAdvancedFilters}
                         viewMode="grid"
                         darkMode={darkMode}
+                        isNavigating={navigatingToRoom === item.rooms.code}
                         onToggleSelection={toggleRoomSelection}
                         onViewRoom={handleViewRoom}
                         onArchiveRoom={handleArchiveRoom}

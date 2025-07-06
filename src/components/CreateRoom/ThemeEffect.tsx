@@ -15,7 +15,7 @@ export const ThemeEffect: React.FC<ThemeEffectProps> = ({ theme, show, width, he
   const [snowflakes, setSnowflakes] = useState<Array<{ id: number; x: number; y: number; size: number; delay: number; rotation: number }>>([]);
   
   // For Surprise Me - floating food icons
-  const [foodIcons, setFoodIcons] = useState<Array<{ id: number; x: number; y: number; icon: React.ReactNode; delay: number; size: number }>>([]);
+  const [foodIcons, setFoodIcons] = useState<Array<{ id: number; x: number; y: number; icon: any; delay: number; size: number }>>([]);
   
   // Generate snowflakes for Cozy Gathering theme - centered near the middle of the screen
   useEffect(() => {

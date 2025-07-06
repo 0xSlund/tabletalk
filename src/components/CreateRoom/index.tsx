@@ -374,9 +374,9 @@ export default function CreateRoomScreen({ initialView, initialStep }: CreateRoo
       // Handle any errors
       console.error('Error creating room:', error);
       console.error('Error details:', { 
-        message: error.message, 
-        stack: error.stack,
-        name: error.name
+        message: error instanceof Error ? error.message : 'Unknown error', 
+        stack: error instanceof Error ? error.stack : undefined,
+        name: error instanceof Error ? error.name : 'Unknown'
       });
       
       // Update error state
@@ -441,7 +441,7 @@ export default function CreateRoomScreen({ initialView, initialStep }: CreateRoo
           const templateData = {
             name: templateName.trim(),
             roomName: roomName,
-            foodMode: selectedTheme, // Use selectedTheme which corresponds to foodMode
+            foodMode: foodMode || 'both', // Use foodMode string value
             selectedCuisines: selectedCuisines,
             priceRange: priceRange,
             radius: radius,
@@ -617,7 +617,7 @@ export default function CreateRoomScreen({ initialView, initialStep }: CreateRoo
         onNavigateToRoom={navigateToRoom}
         autoNavigateDelay={5000}
         theme={selectedTheme}
-        foodMode={foodMode}
+        foodMode={foodMode || undefined}
       />
 
       <AnimatePresence mode="wait">
@@ -629,7 +629,7 @@ export default function CreateRoomScreen({ initialView, initialStep }: CreateRoo
           />
         ) : showQuickCreate ? (
           <QuickCreate
-            onCreate={handleQuickCreateSubmit}
+            onCreate={handleQuickCreateSubmit as any}
             onBack={handleQuickCreateBack}
           />
         ) : showSavedTemplates ? (

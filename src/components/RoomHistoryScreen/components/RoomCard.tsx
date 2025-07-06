@@ -14,6 +14,7 @@ interface RoomCardProps {
   showAdvancedFilters: boolean;
   viewMode: ViewMode;
   darkMode: boolean;
+  isNavigating?: boolean;
   onToggleSelection: (roomId: string) => void;
   onViewRoom: (roomCode: string) => void;
   onArchiveRoom?: (roomId: string) => void;
@@ -26,12 +27,13 @@ export function RoomCard({
   showAdvancedFilters,
   viewMode,
   darkMode,
+  isNavigating = false,
   onToggleSelection,
   onViewRoom,
   onArchiveRoom,
   onUnarchiveRoom
 }: RoomCardProps) {
-  const hasResults = item.rooms.voting_results && item.rooms.voting_results.length > 0;
+  const hasResults = Boolean(item.rooms.voting_results && item.rooms.voting_results.length > 0);
   const status = getRoomStatus(item.rooms.expires_at, hasResults);
   const isActive = status === 'active';
   const isExpired = status === 'expired';
@@ -99,23 +101,20 @@ export function RoomCard({
       {/* Main card */}
       <motion.div
         key={item.id}
-        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+        initial={{ opacity: 1 }}
         animate={{ 
-          opacity: 1, 
-          y: 0, 
-          scale: 1,
+          opacity: 1,
           boxShadow: isSelected 
             ? darkMode
               ? '0 8px 32px rgba(59, 130, 246, 0.15), 0 0 0 1px rgba(59, 130, 246, 0.2)'
               : '0 8px 32px rgba(59, 130, 246, 0.12), 0 0 0 1px rgba(59, 130, 246, 0.15)'
             : undefined
         }}
-        exit={{ opacity: 0, y: -20, scale: 0.95 }}
-        transition={{ duration: 0.3, ease: "easeOut" }}
+        transition={{ duration: 0.15, ease: "easeOut" }}
         whileHover={{ 
-          scale: showAdvancedFilters ? 1 : 1.03, 
-          y: showAdvancedFilters ? 0 : -4,
-          transition: { duration: 0.2, ease: "easeOut" }
+          scale: showAdvancedFilters ? 1 : 1.02, 
+          y: showAdvancedFilters ? 0 : -2,
+          transition: { duration: 0.15, ease: "easeOut" }
         }}
         className={`relative rounded-2xl transition-all duration-300 group ring-2 border cursor-pointer shadow-lg hover:shadow-2xl ${
           styles.container
@@ -276,7 +275,7 @@ export function RoomCard({
                       <div className={`text-xs font-bold line-clamp-1 ${
                         darkMode ? 'text-green-300' : 'text-green-800'
                       }`}>
-                        {item.rooms.voting_results[0]?.winning_option?.text || 'Decision made'}
+                        {item.rooms.voting_results?.[0]?.winning_option?.text || 'Decision made'}
                       </div>
                     </div>
                   </motion.div>
@@ -331,14 +330,14 @@ export function RoomCard({
               <motion.button
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!(isOlderThan30Days && !isArchived)) {
+                    if (!(isOlderThan30Days && !isArchived) && !isNavigating) {
                       onViewRoom(item.rooms.code);
                     }
                   }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${
                     status === 'active' 
                       ? 'bg-blue-600 text-white shadow-lg hover:bg-blue-700'
-                      : (isOlderThan30Days && !isArchived)
+                      : (isOlderThan30Days && !isArchived) || isNavigating
                         ? darkMode
                           ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
                           : 'bg-gray-200 text-gray-500 cursor-not-allowed'
@@ -346,11 +345,21 @@ export function RoomCard({
                           ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
-                  whileHover={!(isOlderThan30Days && !isArchived) ? { scale: 1.05 } : {}}
-                  whileTap={!(isOlderThan30Days && !isArchived) ? { scale: 0.95 } : {}}
-                  disabled={isOlderThan30Days && !isArchived}
+                  whileHover={!(isOlderThan30Days && !isArchived) && !isNavigating ? { scale: 1.02 } : {}}
+                  whileTap={!(isOlderThan30Days && !isArchived) && !isNavigating ? { scale: 0.98 } : {}}
+                  disabled={isOlderThan30Days && !isArchived || isNavigating}
                 >
-                  {status === 'active' ? (
+                  {isNavigating ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      >
+                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
+                      </motion.div>
+                      <span>LOADING...</span>
+                    </>
+                  ) : status === 'active' ? (
                     <>
                       <Play className="w-4 h-4" />
                       <span>JOIN NOW</span>
@@ -363,12 +372,12 @@ export function RoomCard({
                   ) : status === 'expired' ? (
                     <>
                       <Eye className="w-4 h-4" />
-                      <span>VIEW DISCUSSION</span>
+                      <span>VIEW</span>
                     </>
                   ) : (
                     <>
                       <Eye className="w-4 h-4" />
-                      <span>VIEW RESULTS</span>
+                      <span>VIEW</span>
                     </>
                   )}
                 </motion.button>

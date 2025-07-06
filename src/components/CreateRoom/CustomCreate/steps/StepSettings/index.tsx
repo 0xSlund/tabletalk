@@ -76,10 +76,10 @@ export function StepSettings({
 
   // Update completion status when timer settings change
   useEffect(() => {
-    const isTimerComplete = timerOption !== '' && (
+    const isTimerComplete = Boolean(timerOption !== '' && (
       timerOption !== 'custom' || 
       (customDuration && parseInt(customDuration) > 0)
-    );
+    ));
     setCompletedSections(prev => ({
       ...prev,
       decisionTimer: isTimerComplete

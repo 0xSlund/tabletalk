@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Sparkles } from 'lucide-react';
+import { ArrowLeft, Zap } from 'lucide-react';
 import { fadeVariants } from '../../PageTransition';
 import { THEMES } from './constants';
 import { formVariants, floatAnimation, QuickCreateProps, FoodMode } from './types';
@@ -120,14 +120,6 @@ export const QuickCreate: React.FC<QuickCreateProps> = ({
           transition: { duration: 4, repeat: Infinity }
         }}
       />
-      <motion.div 
-        className={`absolute top-1/3 left-1/4 w-8 h-8 rounded-full ${selectedTheme === 0 ? 'bg-gray-200' : selectedTheme === 1 ? 'bg-indigo-300' : 'bg-emerald-300'} opacity-20`}
-        animate={{
-          y: [0, -30, 0],
-          x: [0, 10, 0],
-          transition: { duration: 5, repeat: Infinity }
-        }}
-      />
 
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm shadow-md sticky top-0 z-10">
@@ -143,11 +135,11 @@ export const QuickCreate: React.FC<QuickCreateProps> = ({
             <div className="flex items-center gap-2">
               <motion.div 
                 className="relative"
-                whileHover={{ rotate: 20 }}
+                whileHover={{ scale: 1.1 }}
                 transition={{ type: "spring", stiffness: 300 }}
               >
-                <div className={`absolute -inset-1.5 bg-gradient-to-r ${selectedTheme === 0 ? 'from-gray-400 to-gray-500' : selectedTheme === 1 ? 'from-blue-400 to-purple-500' : 'from-green-400 to-teal-500'} rounded-full blur-sm opacity-70`}></div>
-                <Sparkles className="relative w-6 h-6 text-white" />
+                <div className={`absolute -inset-1.5 bg-gradient-to-r ${selectedTheme === 0 ? 'from-orange-400 to-red-500' : selectedTheme === 1 ? 'from-blue-400 to-purple-500' : 'from-green-400 to-teal-500'} rounded-full blur-sm opacity-70`}></div>
+                <Zap className="relative w-6 h-6 text-white" />
               </motion.div>
               <h1 className={`text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r ${selectedTheme === 0 ? 'from-gray-600 to-gray-700' : selectedTheme === 1 ? 'from-blue-600 to-purple-600' : 'from-green-600 to-teal-600'}`}>
                 Quick Create
@@ -173,12 +165,8 @@ export const QuickCreate: React.FC<QuickCreateProps> = ({
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 relative overflow-hidden"
+          className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 relative"
         >
-          {/* Background pattern */}
-          <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
-            <div className="absolute inset-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'20\' height=\'20\' viewBox=\'0 0 20 20\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23000000\' fill-opacity=\'1\' fill-rule=\'evenodd\'%3E%3Ccircle cx=\'3\' cy=\'3\' r=\'1.5\'/%3E%3Ccircle cx=\'13\' cy=\'13\' r=\'1.5\'/%3E%3C/g%3E%3C/svg%3E")', backgroundSize: '24px 24px' }}></div>
-          </div>
 
           <motion.div
             variants={formVariants}

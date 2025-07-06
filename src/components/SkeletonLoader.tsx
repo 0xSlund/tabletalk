@@ -2,38 +2,204 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 
-interface SkeletonProps {
+interface SkeletonLoaderProps {
   className?: string;
-  variant?: 'default' | 'card' | 'text' | 'circle' | 'image' | 'button';
+  variant?: 'default' | 'card' | 'grid' | 'list' | 'cuisine' | 'recipe';
+  count?: number;
 }
 
-export function Skeleton({ className, variant = 'default' }: SkeletonProps) {
-  const baseClasses = "bg-gray-200 rounded animate-pulse";
-  
-  let variantClasses = '';
-  
-  switch (variant) {
-    case 'card':
-      variantClasses = "h-32 w-full";
-      break;
-    case 'text':
-      variantClasses = "h-4 w-full";
-      break;
-    case 'circle':
-      variantClasses = "rounded-full h-10 w-10";
-      break;
-    case 'image':
-      variantClasses = "h-40 w-full object-cover";
-      break;
-    case 'button':
-      variantClasses = "h-10 w-32 rounded-full";
-      break;
-    default:
-      variantClasses = "h-6 w-full";
-  }
-  
-  return <div className={cn(baseClasses, variantClasses, className)} />;
-}
+const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({ 
+  className = '', 
+  variant = 'default',
+  count = 1 
+}) => {
+  const shimmerVariants = {
+    initial: { x: '-100%' },
+    animate: { 
+      x: '100%',
+      transition: {
+        repeat: Infinity,
+        duration: 1.5,
+        ease: 'linear'
+      }
+    }
+  };
+
+  const Shimmer = () => (
+    <motion.div
+      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+      variants={shimmerVariants}
+      initial="initial"
+      animate="animate"
+    />
+  );
+
+  const DefaultSkeleton = () => (
+    <div className={`bg-gray-200 rounded overflow-hidden relative ${className}`}>
+      <Shimmer />
+    </div>
+  );
+
+  const CardSkeleton = () => (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-4">
+      <div className="flex items-center space-x-4">
+        <div className="w-12 h-12 bg-gray-200 rounded-full relative overflow-hidden">
+          <Shimmer />
+        </div>
+        <div className="flex-1 space-y-2">
+          <div className="h-4 bg-gray-200 rounded w-3/4 relative overflow-hidden">
+            <Shimmer />
+          </div>
+          <div className="h-3 bg-gray-200 rounded w-1/2 relative overflow-hidden">
+            <Shimmer />
+          </div>
+        </div>
+      </div>
+      <div className="space-y-2">
+        <div className="h-3 bg-gray-200 rounded relative overflow-hidden">
+          <Shimmer />
+        </div>
+        <div className="h-3 bg-gray-200 rounded w-5/6 relative overflow-hidden">
+          <Shimmer />
+        </div>
+      </div>
+    </div>
+  );
+
+  const GridSkeleton = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {Array.from({ length: count }, (_, i) => (
+        <motion.div
+          key={i}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: i * 0.1 }}
+        >
+          <CardSkeleton />
+        </motion.div>
+      ))}
+    </div>
+  );
+
+  const ListSkeleton = () => (
+    <div className="space-y-4">
+      {Array.from({ length: count }, (_, i) => (
+        <motion.div
+          key={i}
+          className="flex items-center space-x-4 p-4 bg-white rounded-lg border border-gray-100"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: i * 0.1 }}
+        >
+          <div className="w-16 h-16 bg-gray-200 rounded-lg relative overflow-hidden">
+            <Shimmer />
+          </div>
+          <div className="flex-1 space-y-2">
+            <div className="h-4 bg-gray-200 rounded w-3/4 relative overflow-hidden">
+              <Shimmer />
+            </div>
+            <div className="h-3 bg-gray-200 rounded w-1/2 relative overflow-hidden">
+              <Shimmer />
+            </div>
+            <div className="h-3 bg-gray-200 rounded w-2/3 relative overflow-hidden">
+              <Shimmer />
+            </div>
+          </div>
+          <div className="w-20 h-8 bg-gray-200 rounded relative overflow-hidden">
+            <Shimmer />
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  );
+
+  const CuisineSkeleton = () => (
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      {Array.from({ length: count }, (_, i) => (
+        <motion.div
+          key={i}
+          className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: i * 0.1 }}
+        >
+          <div className="aspect-video bg-gray-200 relative overflow-hidden">
+            <Shimmer />
+          </div>
+          <div className="p-4 space-y-2">
+            <div className="h-5 bg-gray-200 rounded w-3/4 relative overflow-hidden">
+              <Shimmer />
+            </div>
+            <div className="h-3 bg-gray-200 rounded w-full relative overflow-hidden">
+              <Shimmer />
+            </div>
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  );
+
+  const RecipeSkeleton = () => (
+    <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100">
+      <div className="aspect-[4/3] bg-gray-200 relative overflow-hidden">
+        <Shimmer />
+      </div>
+      <div className="p-6 space-y-4">
+        <div className="space-y-2">
+          <div className="h-6 bg-gray-200 rounded w-3/4 relative overflow-hidden">
+            <Shimmer />
+          </div>
+          <div className="h-4 bg-gray-200 rounded w-full relative overflow-hidden">
+            <Shimmer />
+          </div>
+          <div className="h-4 bg-gray-200 rounded w-2/3 relative overflow-hidden">
+            <Shimmer />
+          </div>
+        </div>
+        <div className="flex items-center space-x-4">
+          <div className="h-4 bg-gray-200 rounded w-16 relative overflow-hidden">
+            <Shimmer />
+          </div>
+          <div className="h-4 bg-gray-200 rounded w-20 relative overflow-hidden">
+            <Shimmer />
+          </div>
+          <div className="h-4 bg-gray-200 rounded w-12 relative overflow-hidden">
+            <Shimmer />
+          </div>
+        </div>
+        <div className="flex space-x-2">
+          <div className="h-8 bg-gray-200 rounded w-20 relative overflow-hidden">
+            <Shimmer />
+          </div>
+          <div className="h-8 bg-gray-200 rounded w-24 relative overflow-hidden">
+            <Shimmer />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderSkeleton = () => {
+    switch (variant) {
+      case 'card':
+        return <CardSkeleton />;
+      case 'grid':
+        return <GridSkeleton />;
+      case 'list':
+        return <ListSkeleton />;
+      case 'cuisine':
+        return <CuisineSkeleton />;
+      case 'recipe':
+        return <RecipeSkeleton />;
+      default:
+        return <DefaultSkeleton />;
+    }
+  };
+
+  return renderSkeleton();
+};
+
+export default SkeletonLoader;
 
 interface CardSkeletonProps {
   hasImage?: boolean;
@@ -44,15 +210,15 @@ interface CardSkeletonProps {
 export function CardSkeleton({ hasImage = true, lines = 3, hasFooter = true }: CardSkeletonProps) {
   return (
     <div className="bg-white p-5 rounded-xl shadow-md border border-gray-100">
-      {hasImage && <Skeleton variant="image" className="mb-4 rounded-lg" />}
-      <Skeleton variant="text" className="w-3/4 mb-2" />
+      {hasImage && <SkeletonLoader variant="image" className="mb-4 rounded-lg" />}
+      <SkeletonLoader variant="text" className="w-3/4 mb-2" />
       {Array.from({ length: lines }).map((_, i) => (
-        <Skeleton key={i} variant="text" className={cn("w-full mb-2", i === lines - 1 && "w-1/2")} />
+        <SkeletonLoader key={i} variant="text" className={cn("w-full mb-2", i === lines - 1 && "w-1/2")} />
       ))}
       {hasFooter && (
         <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
-          <Skeleton variant="text" className="w-1/4" />
-          <Skeleton variant="button" />
+          <SkeletonLoader variant="text" className="w-1/4" />
+          <SkeletonLoader variant="button" />
         </div>
       )}
     </div>
@@ -63,15 +229,15 @@ export function RoomCardSkeleton() {
   return (
     <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-md">
       <div className="flex justify-between mb-3">
-        <Skeleton variant="text" className="w-1/2" />
-        <Skeleton variant="circle" className="h-6 w-6" />
+        <SkeletonLoader variant="text" className="w-1/2" />
+        <SkeletonLoader variant="circle" className="h-6 w-6" />
       </div>
-      <Skeleton variant="text" className="w-1/3 mb-4" />
+      <SkeletonLoader variant="text" className="w-1/3 mb-4" />
       <div className="py-2 mb-2">
-        <Skeleton variant="text" className="w-2/3" />
+        <SkeletonLoader variant="text" className="w-2/3" />
       </div>
       <div className="flex justify-end mt-4">
-        <Skeleton variant="button" className="w-1/3 h-8" />
+        <SkeletonLoader variant="button" className="w-1/3 h-8" />
       </div>
     </div>
   );
@@ -83,8 +249,8 @@ export function HomeScreenSkeleton() {
       {/* Recent Rooms Section */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
-          <Skeleton variant="text" className="w-32" />
-          <Skeleton variant="text" className="w-24" />
+          <SkeletonLoader variant="text" className="w-32" />
+          <SkeletonLoader variant="text" className="w-24" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {Array.from({ length: 3 }).map((_, i) => (

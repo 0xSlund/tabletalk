@@ -21,7 +21,7 @@ import {
 import { TemplateService, type TemplateData } from '../../lib/templateService';
 import type { Database } from '../../lib/database.types';
 
-type RoomTemplate = Database['public']['Tables']['room_templates']['Row'];
+type RoomTemplate = any; // TODO: Update when room_templates table is added to database types
 
 interface SavedTemplatesScreenProps {
   onBack: () => void;
@@ -147,29 +147,26 @@ export function SavedTemplatesScreen({ onBack, onCreateFromTemplate }: SavedTemp
       className="min-h-screen bg-gradient-to-br from-[#FFFDF9] via-[#FAF8F5] to-[#F3ECE3]"
     >
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
+      <header className="bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between">
               <button
                 onClick={onBack}
-                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
               >
                 <ArrowLeft className="w-5 h-5" />
+              <span className="font-medium">Back to Create</span>
               </button>
-              <div className="flex items-center gap-3">
-                <div className="bg-purple-100 p-2 rounded-lg">
-                  <Layout className="w-6 h-6 text-purple-600" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">Saved Templates</h1>
-                  <p className="text-sm text-gray-600">Quick start with your saved configurations</p>
-                </div>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-purple-500">
+                <Layout className="w-5 h-5 text-white" />
               </div>
+              <h1 className="text-2xl font-bold text-gray-900">Saved Templates</h1>
             </div>
+            <div className="w-4" />
           </div>
         </div>
-      </div>
+      </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Search and Actions */}
@@ -207,7 +204,7 @@ export function SavedTemplatesScreen({ onBack, onCreateFromTemplate }: SavedTemp
             className="text-center py-12"
           >
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md mx-auto">
-              <Template className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <Layout className="w-16 h-16 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No Templates Found</h3>
               <p className="text-gray-600 mb-6">
                 {searchTerm ? 'No templates match your search.' : 'You haven\'t saved any templates yet. Create a custom room and save it as a template to get started.'}

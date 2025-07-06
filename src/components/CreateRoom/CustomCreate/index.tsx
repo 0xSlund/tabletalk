@@ -475,29 +475,24 @@ export function CustomCreate({
       exit="exit"
       className="max-w-6xl mx-auto px-4 py-6 pb-20 min-h-screen flex flex-col"
     >
-      {/* Header with App Title */}
-      <header className="bg-white backdrop-blur-md shadow-lg sticky top-0 z-20 rounded-2xl mb-6">
-        <div className="max-w-6xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-center">
-            <div className="flex items-center gap-3">
-              <motion.div 
-                initial={{ rotate: 0 }}
-                animate={{ 
-                  rotate: [0, -10, 10, -5, 5, 0],
-                  transition: { 
-                    duration: 0.6, 
-                    ease: "easeInOut",
-                    delay: 0.5
-                  }
-                }}
-                className="hidden sm:flex"
-              >
-                <UtensilsCrossed className="w-7 h-7 text-orange-500" />
-              </motion.div>
-              <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-red-500">
-                Create Your Room
-              </h1>
+      {/* Header */}
+      <header className="bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-10 mb-6">
+        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={onBack}
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span className="font-medium">Back to Create</span>
+            </button>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-orange-500">
+                <UtensilsCrossed className="w-5 h-5 text-white" />
             </div>
+              <h1 className="text-2xl font-bold text-gray-900">Custom Create</h1>
+            </div>
+            <div className="w-4" />
           </div>
         </div>
       </header>

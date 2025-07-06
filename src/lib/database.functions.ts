@@ -1,7 +1,7 @@
 import { Database } from './database.types';
 
-// Define the meal_type enum that's used in the database
-export type MealType = 'all' | 'breakfast' | 'lunch' | 'dinner' | 'dessert' | 'appetizers_snacks' | 'soups_salads' | 'side_dishes';
+// Define the meal_type enum that's used in the database - updated to match actual DB values
+export type MealType = 'all' | 'breakfast' | 'main_course' | 'dessert' | 'appetizers_snacks' | 'soups_salads';
 
 // Response type for get_filtered_recipes function
 export interface FilteredRecipe {

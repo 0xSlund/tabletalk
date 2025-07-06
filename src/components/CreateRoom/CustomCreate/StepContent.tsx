@@ -155,7 +155,7 @@ export function StepContent({
             radius={radius}
             setRadius={setRadius}
             isLoading={loading}
-            foodMode={foodMode || null}
+            foodMode={foodMode as any}
             setFoodMode={setFoodMode}
             completedSections={completedSections || {
               foodMode: false,

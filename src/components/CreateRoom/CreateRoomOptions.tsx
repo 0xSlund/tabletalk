@@ -98,27 +98,30 @@ export const CreateRoomOptions: React.FC<CreateRoomOptionsProps> = ({
       exit="exit"
       className="min-h-screen bg-gradient-to-br from-[#FFFDF9] via-[#FAF8F5] to-[#F3ECE3]"
     >
-      <div className="max-w-4xl mx-auto px-4 py-12">
         {/* Header */}
-        <div className="flex items-center justify-center mb-8 relative">
-          {/* Back Button */}
+      <header className="bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between">
           <button
             onClick={handleBack}
-            className="absolute left-0 p-2 rounded-lg bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-all"
-            aria-label="Go back"
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
           >
-            <ArrowLeft className="w-5 h-5 text-gray-600" />
+              <ArrowLeft className="w-5 h-5" />
+              <span className="font-medium">Back to Home</span>
           </button>
-          
-          {/* Title */}
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center shadow-md">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-orange-500">
               <UtensilsCrossed className="w-5 h-5 text-white" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900">Create a Room</h1>
+            </div>
+            <div className="w-4" />
           </div>
         </div>
+      </header>
         
+      {/* Main Content */}
+      <main className="max-w-4xl mx-auto px-4 py-12">
         <motion.p 
           className="text-center text-gray-600 mb-8"
           initial={{ opacity: 0, y: -10 }}
@@ -172,7 +175,7 @@ export const CreateRoomOptions: React.FC<CreateRoomOptionsProps> = ({
         >
           All room types support real-time voting and decision making
         </motion.p>
-      </div>
+      </main>
     </motion.div>
   );
 };

@@ -1,10 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UtensilsCrossed, ArrowLeft, Globe, TrendingUp, Clock, Users, ChefHat, Star, ArrowUpRight, Loader2 } from 'lucide-react';
 import { useAppStore } from '../lib/store';
 import { fetchCuisines, fetchRecipesByCuisine, type Cuisine, type Recipe } from '../lib/supabase';
 import { pageTransitionVariants } from '../lib/utils';
 import BackButton from './BackButton';
+import SkeletonLoader from './SkeletonLoader';
+
+// Cache for cuisines and recipes data
+const dataCache = new Map<string, { data: any, timestamp: number }>();
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
 
 interface DishDetails {
   name: string;
@@ -100,12 +105,18 @@ export function ExploreCuisinesScreen() {
   const [error, setError] = useState<string | null>(null);
   const [isExiting, setIsExiting] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [cuisinesLoaded, setCuisinesLoaded] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Set mounted state when component mounts
   useEffect(() => {
     setMounted(true);
     return () => {
       setMounted(false);
+      // Cancel any pending requests
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
       // Reset all state when component unmounts
       setCuisines([]);
       setSelectedCuisine(null);
@@ -116,98 +127,134 @@ export function ExploreCuisinesScreen() {
       setRecipes([]);
       setError(null);
       setIsExiting(false);
+      setCuisinesLoaded(false);
     };
   }, []);
 
-  useEffect(() => {
-    let isCancelled = false;
-
-    const loadCuisines = async () => {
-      if (!mounted) return;
-      
-      setLoading(true);
-      setError(null);
-      
-      try {
-        const cuisinesData = await fetchCuisines();
-        
-        if (isCancelled) return;
-        
-        // If no cuisines in database, use fallback data
-        if (cuisinesData.length === 0) {
-          setCuisines(fallbackCuisines as Cuisine[]);
-        } else {
-          setCuisines(cuisinesData);
-        }
-      } catch (error) {
-        if (isCancelled) return;
-        
-        console.error('Error loading cuisines:', error);
-        setError('Failed to load cuisines. Using fallback data.');
-        setCuisines(fallbackCuisines as Cuisine[]);
-      } finally {
-        if (!isCancelled) {
-          setLoading(false);
-        }
-      }
-    };
+  const loadCuisines = useCallback(async () => {
+    if (!mounted) return;
     
-    if (mounted && cuisines.length === 0) {
-      loadCuisines();
+    // Check cache first
+    const cached = dataCache.get('cuisines');
+    if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
+      console.log('Using cached cuisines data');
+      setCuisines(cached.data);
+      setCuisinesLoaded(true);
+      setLoading(false);
+      return;
     }
     
-    return () => {
-      isCancelled = true;
-    };
+    // Cancel previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const cuisinesData = await fetchCuisines();
+      
+      if (!mounted) return;
+      
+      let finalData: Cuisine[];
+      // If no cuisines in database, use fallback data
+      if (cuisinesData.length === 0) {
+        console.log('No cuisines in database, using fallback data');
+        finalData = fallbackCuisines as Cuisine[];
+      } else {
+        finalData = cuisinesData;
+      }
+      
+      setCuisines(finalData);
+      setCuisinesLoaded(true);
+      
+      // Cache the results
+      dataCache.set('cuisines', { 
+        data: finalData, 
+        timestamp: Date.now() 
+      });
+      
+    } catch (error) {
+      if (!mounted) return;
+      
+      console.error('Error loading cuisines:', error);
+      setError('Failed to load cuisines. Using fallback data.');
+      setCuisines(fallbackCuisines as Cuisine[]);
+      setCuisinesLoaded(true);
+    } finally {
+      if (mounted) {
+        setLoading(false);
+      }
+    }
   }, [mounted]);
 
   useEffect(() => {
-    let isCancelled = false;
+    if (mounted && !cuisinesLoaded && !loading) {
+      loadCuisines();
+    }
+  }, [mounted, cuisinesLoaded, loading, loadCuisines]);
 
-    const loadRecipes = async () => {
-      if (!mounted || !selectedCuisine) return;
-      
-      setLoading(true);
-      setError(null);
-      
-      try {
-        const recipesData = await fetchRecipesByCuisine(selectedCuisine.id);
-        
-        if (isCancelled) return;
-        
-        // If no recipes found, use fallback data for Italian cuisine
-        if (recipesData.length === 0 && selectedCuisine.name === 'Italian') {
-          setRecipes(fallbackRecipes as Recipe[]);
-        } else if (recipesData.length === 0) {
-          setRecipes([]);
-        } else {
-          setRecipes(recipesData);
-        }
-      } catch (error) {
-        if (isCancelled) return;
-        
-        console.error('Error loading recipes:', error);
-        setError('Failed to load recipes. Using fallback data.');
-        if (selectedCuisine.name === 'Italian') {
-          setRecipes(fallbackRecipes as Recipe[]);
-        } else {
-          setRecipes([]);
-        }
-      } finally {
-        if (!isCancelled) {
-          setLoading(false);
-        }
-      }
-    };
+  const loadRecipes = useCallback(async (cuisine: Cuisine) => {
+    if (!mounted) return;
     
-    if (selectedCuisine) {
-      loadRecipes();
+    // Check cache first
+    const cacheKey = `recipes-${cuisine.id}`;
+    const cached = dataCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
+      console.log('Using cached recipes data for', cuisine.name);
+      setRecipes(cached.data);
+      setSelectedCuisine(cuisine);
+      setLoading(false);
+      return;
     }
     
-    return () => {
-      isCancelled = true;
-    };
-  }, [selectedCuisine, mounted]);
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const recipesData = await fetchRecipesByCuisine(cuisine.id);
+      
+      if (!mounted) return;
+      
+      let finalData: Recipe[];
+      // If no recipes in database, use fallback data
+      if (recipesData.length === 0) {
+        console.log('No recipes found for', cuisine.name, 'using fallback data');
+        finalData = fallbackRecipes as Recipe[];
+      } else {
+        finalData = recipesData;
+      }
+      
+      setRecipes(finalData);
+      setSelectedCuisine(cuisine);
+      
+      // Cache the results
+      dataCache.set(cacheKey, { 
+        data: finalData, 
+        timestamp: Date.now() 
+      });
+      
+    } catch (error) {
+      if (!mounted) return;
+      
+      console.error('Error loading recipes for', cuisine.name, ':', error);
+      setError(`Failed to load recipes for ${cuisine.name}. Using fallback data.`);
+      setRecipes(fallbackRecipes as Recipe[]);
+      setSelectedCuisine(cuisine);
+    } finally {
+      if (mounted) {
+        setLoading(false);
+      }
+    }
+  }, [mounted]);
+
+  useEffect(() => {
+    if (selectedCuisine) {
+      loadRecipes(selectedCuisine);
+    }
+  }, [selectedCuisine, loadRecipes]);
 
   const handleSelectRecipe = (recipe: Recipe) => {
     const dishDetails: DishDetails = {
@@ -235,12 +282,31 @@ export function ExploreCuisinesScreen() {
 
   if (loading && cuisines.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#FFFDF9] via-[#FAF8F5] to-[#F3ECE3] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-12 h-12 text-primary animate-spin" />
-          <p className="text-neutral font-medium">Loading cuisines...</p>
-        </div>
-      </div>
+      <motion.div 
+        className="min-h-screen bg-gradient-to-br from-[#FFFDF9] via-[#FAF8F5] to-[#F3ECE3]"
+        initial="initial"
+        exit="exit"
+        variants={pageTransitionVariants}
+        animate="enter"
+      >
+        {/* Header */}
+        <header className="bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-10">
+          <div className="max-w-[1400px] mx-auto px-4 py-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between">
+              <BackButton />
+              <div className="flex items-center gap-2">
+                <UtensilsCrossed className="w-6 h-6 text-primary" />
+                <h1 className="text-2xl font-bold text-gray-900">TableTalk</h1>
+              </div>
+              <div className="w-20" />
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <SkeletonLoader variant="cuisine" count={8} />
+        </main>
+      </motion.div>
     );
   }
 

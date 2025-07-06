@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { UtensilsCrossed, ArrowLeft, Plus, Trophy, Loader2 } from 'lucide-react';
+import { UtensilsCrossed, ArrowLeft, Plus, Trophy, Loader2, Clock } from 'lucide-react';
 import { useAppStore } from '../../lib/store';
 
 // Import components
@@ -24,7 +24,7 @@ import { getThemeColors } from './utils/themeUtils';
 import { RoomProvider, useRoomContext } from './contexts/RoomContext';
 
 // This is the new component that will render the actual room content
-const ActiveRoomView = () => {
+const ActiveRoomView = ({ roomType }: { roomType?: 'active' | 'completed' | 'expired' }) => {
   const navigate = useNavigate();
   const { currentRoom, previousPage } = useAppStore();
   const { roomExpired } = useRoomContext();
@@ -112,10 +112,34 @@ const ActiveRoomView = () => {
               <UtensilsCrossed className={`w-6 h-6 ${theme.headerIcon}`} />
               <h1 className="text-2xl font-bold text-gray-900">{currentRoom.name}</h1>
               {!currentRoom.isActive && (
-                <div className="ml-2 bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
-                  <Trophy size={14} />
-                  <span>Completed</span>
-                </div>
+                (() => {
+                  // Use roomType prop if provided, otherwise determine from room data
+                  let status = roomType;
+                  if (!status) {
+                    const hasVotingResults = currentRoom.votes && Object.keys(currentRoom.votes).length > 0;
+                    status = hasVotingResults ? 'completed' : 'expired';
+                  }
+                  
+                  return (
+                    <div className={`ml-2 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${
+                      status === 'completed'
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {status === 'completed' ? (
+                        <>
+                          <Trophy size={14} />
+                          <span>Completed</span>
+                        </>
+                      ) : (
+                        <>
+                          <Clock size={14} />
+                          <span>Expired</span>
+                        </>
+                      )}
+                    </div>
+                  );
+                })()
               )}
             </div>
             <div className="w-20" />
@@ -260,7 +284,7 @@ export function ActiveRoomScreen({ roomType = 'active' }: ActiveRoomScreenProps)
   
   return (
     <RoomProvider>
-      <ActiveRoomView />
+      <ActiveRoomView roomType={roomType} />
     </RoomProvider>
   );
 } 
