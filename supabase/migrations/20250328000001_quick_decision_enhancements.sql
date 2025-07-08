@@ -1,5 +1,5 @@
 /*
-  # Quick Decision Enhancement Schema
+  # AI Food Assistant Enhancement Schema
 
   1. Changes
     - Add price_range column to recipes table

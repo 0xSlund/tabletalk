@@ -172,11 +172,11 @@ const ActiveRoomView = ({ roomType }: { roomType?: 'active' | 'completed' | 'exp
                 ) : (
                   <div className="text-center py-12">
                     <UtensilsCrossed className={`w-16 h-16 ${theme.iconColor} mx-auto mb-4`} />
-                    <h3 className="text-xl font-medium text-gray-700 mb-2">No food options yet</h3>
-                    <p className="text-gray-500 mb-6">Add some food options to start voting</p>
+                    <h3 className="text-xl font-medium text-gray-700 mb-2">No AI suggestions yet</h3>
+                    <p className="text-gray-500 mb-6">Let our AI analyze your preferences and suggest perfect options</p>
                     <button onClick={() => setShowSuggestionForm(true)} className={`px-6 py-3 bg-gradient-to-r ${theme.buttonBg} text-white rounded-lg transition-all duration-200 shadow-sm flex items-center gap-2 mx-auto ${(hasVotedOnAll || roomExpired) ? `opacity-50 cursor-not-allowed ${theme.buttonBgDisabled}` : theme.buttonBgHover}`} disabled={hasVotedOnAll || roomExpired}>
                       <Plus size={20} />
-                      <span>Add First Option</span>
+                      <span>Get AI Suggestions</span>
                     </button>
                   </div>
                 )}

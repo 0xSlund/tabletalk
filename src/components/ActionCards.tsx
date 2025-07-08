@@ -1,6 +1,6 @@
 import React, { useRef, RefObject } from 'react';
 import { motion } from 'framer-motion';
-import { Users, UserPlus, Zap, Globe, Star, ArrowRight, MessageSquare } from 'lucide-react';
+import { Users, UserPlus, Bot, Globe, Star, ArrowRight, MessageSquare, Brain, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
 
@@ -241,32 +241,32 @@ export function ActionCards({ darkMode = false }: ActionCardsProps) {
           }
         };
       
-      case "Quick Decision":
-        // Charge slowly, discharge quickly - like building electrical energy
+                  case "AI Food Assistant":
+        // AI processing animation - pulsing with digital glow
         return {
           initial: { 
             scale: 1, 
             rotate: 0, 
-            filter: "brightness(1) drop-shadow(0 0 0px rgba(245, 158, 11, 0))",
+            filter: "brightness(1) drop-shadow(0 0 0px rgba(59, 130, 246, 0))",
             transformOrigin: "center"
           },
           hover: { 
-            scale: [1, 1.05, 1.1, 1.15, 1.25, 0.9, 1.1, 1],
-            rotate: [0, 0, 0, 0, 0, -8, 4, 0],
+            scale: [1, 1.08, 1.04, 1.12, 1.06, 1.15, 1.08, 1],
+            rotate: [0, 3, -2, 5, -3, 2, -1, 0],
             filter: [
-              "brightness(1) drop-shadow(0 0 0px rgba(245, 158, 11, 0))",
-              "brightness(1.05) drop-shadow(0 0 2px rgba(245, 158, 11, 0.3))",
-              "brightness(1.1) drop-shadow(0 0 4px rgba(245, 158, 11, 0.5))",
-              "brightness(1.15) drop-shadow(0 0 6px rgba(245, 158, 11, 0.7))",
-              "brightness(1.3) drop-shadow(0 0 10px rgba(245, 158, 11, 1))",
-              "brightness(1.4) drop-shadow(0 0 15px rgba(245, 158, 11, 1))",
-              "brightness(1.1) drop-shadow(0 0 5px rgba(245, 158, 11, 0.6))",
-              "brightness(1) drop-shadow(0 0 0px rgba(245, 158, 11, 0))"
+              "brightness(1) drop-shadow(0 0 0px rgba(59, 130, 246, 0))",
+              "brightness(1.1) drop-shadow(0 0 4px rgba(59, 130, 246, 0.4))",
+              "brightness(1.05) drop-shadow(0 0 2px rgba(59, 130, 246, 0.2))",
+              "brightness(1.15) drop-shadow(0 0 6px rgba(59, 130, 246, 0.6))",
+              "brightness(1.08) drop-shadow(0 0 3px rgba(59, 130, 246, 0.3))",
+              "brightness(1.2) drop-shadow(0 0 8px rgba(59, 130, 246, 0.8))",
+              "brightness(1.1) drop-shadow(0 0 4px rgba(59, 130, 246, 0.4))",
+              "brightness(1) drop-shadow(0 0 0px rgba(59, 130, 246, 0))"
             ],
             transition: { 
-              duration: 1.8,
-              times: [0, 0.2, 0.4, 0.6, 0.75, 0.85, 0.92, 1],
-              ease: [0.4, 0, 0.2, 1], // Slow charge, quick discharge
+              duration: 2.0,
+              times: [0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1],
+              ease: "easeInOut", // Smooth AI processing rhythm
               repeat: Infinity,
               repeatType: "loop"
             }
@@ -274,7 +274,7 @@ export function ActionCards({ darkMode = false }: ActionCardsProps) {
           exit: {
             scale: 1,
             rotate: 0,
-            filter: "brightness(1) drop-shadow(0 0 0px rgba(245, 158, 11, 0))",
+            filter: "brightness(1) drop-shadow(0 0 0px rgba(59, 130, 246, 0))",
             transition: {
               duration: 0.4,
               ease: "easeOut"
@@ -412,19 +412,19 @@ export function ActionCards({ darkMode = false }: ActionCardsProps) {
       isPrimary: false
     },
     {
-      icon: Zap,
-      title: "Quick Decision",
-      subtitle: "Can't decide? Let us help you choose!",
-      gradient: "bg-gradient-to-br from-orange-50 via-yellow-50 to-amber-50",
-      borderGradient: "from-orange-500 via-yellow-500 to-amber-500",
-      iconColor: "text-orange-600",
-      iconBg: "bg-gradient-to-br from-orange-100 to-yellow-100",
-      iconBgHover: "bg-gradient-to-br from-orange-200 to-yellow-200",
-      titleColor: "bg-gradient-to-r from-orange-700 via-yellow-700 to-amber-700 bg-clip-text text-transparent",
+      icon: Bot,
+      title: "AI Food Assistant",
+      subtitle: "Let AI analyze your preferences and suggest perfect meals!",
+      gradient: "bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50",
+      borderGradient: "from-blue-500 via-indigo-500 to-purple-500",
+      iconColor: "text-blue-600",
+      iconBg: "bg-gradient-to-br from-blue-100 to-indigo-100",
+      iconBgHover: "bg-gradient-to-br from-blue-200 to-indigo-200",
+      titleColor: "bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-700 bg-clip-text text-transparent",
       subtitleColor: "text-gray-600",
-      glowColor: "rgba(245, 158, 11, 0.2)",
-      path: "/quick-decision",
-      ariaLabel: "Get quick food suggestions",
+      glowColor: "rgba(59, 130, 246, 0.2)",
+      path: "/ai-food-assistant",
+      ariaLabel: "Get AI-powered food suggestions",
       isPrimary: false
     },
     {

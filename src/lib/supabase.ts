@@ -176,7 +176,7 @@ export async function fetchRecipesByCuisine(cuisineId: string): Promise<Recipe[]
   }
 }
 
-// Helper function to fetch a random recipe for quick decision with updated types
+// Helper function to fetch a random recipe for AI Food Assistant with updated types
 export async function fetchRandomRecipe(mealType?: MealType | null, userId?: string | null): Promise<FilteredRecipe | null> {
   try {
     // Convert meal type to match database enum
@@ -185,7 +185,11 @@ export async function fetchRandomRecipe(mealType?: MealType | null, userId?: str
     const { data, error } = await supabase
       .rpc('get_filtered_recipes', {
         p_meal_type: dbMealType,
-        p_user_id: userId || null
+        p_user_id: userId || null,
+        p_price_range: null, // Let it use default (all price ranges)
+        p_max_distance: null, // Let it use default (all distances)
+        p_mood: null, // Let it use default (all moods)
+        p_limit: 1
       });
       
     if (error) {
@@ -209,12 +213,12 @@ export async function fetchRandomRecipe(mealType?: MealType | null, userId?: str
       recipe_servings: recipe.recipe_servings,
       recipe_difficulty: recipe.recipe_difficulty,
       recipe_meal_type: recipe.recipe_meal_type,
-      recipe_price_range: null, // Not returned by current function
-      recipe_distance: null, // Not returned by current function
-      recipe_mood_tags: null, // Not returned by current function
-      recipe_dietary_restrictions: null, // Not returned by current function
+      recipe_price_range: recipe.recipe_price_range,
+      recipe_distance: recipe.recipe_distance,
+      recipe_mood_tags: recipe.recipe_mood_tags,
+      recipe_dietary_restrictions: recipe.recipe_dietary_restrictions,
       cuisine_name: recipe.cuisine_name,
-      is_saved: false // Default to false, can be updated separately
+      is_saved: recipe.is_saved || false
     };
     
     return filteredRecipe;
@@ -224,74 +228,67 @@ export async function fetchRandomRecipe(mealType?: MealType | null, userId?: str
   }
 }
 
-// Helper function to fetch multiple filtered recipes for quick decision
+// Helper function to fetch multiple filtered recipes for AI Food Assistant
 export async function fetchFilteredRecipes(
   mealType?: MealType | null, 
   userId?: string | null, 
   count: number = 5
 ): Promise<FilteredRecipe[]> {
   try {
-    const recipes: FilteredRecipe[] = [];
-    const maxRetries = count * 2; // Allow some retries for duplicates
-    const uniqueRecipeIds = new Set<string>();
-    
     // Convert meal type to match database enum
     const dbMealType = mealType === 'all' ? null : mealType;
     
-    // Fetch recipes one by one until we have enough unique ones
-    for (let i = 0; i < maxRetries && recipes.length < count; i++) {
-      try {
-        const { data, error } = await supabase
-          .rpc('get_filtered_recipes', {
-            p_meal_type: dbMealType,
-            p_user_id: userId || null
-          });
-          
-        if (error) {
-          console.error('Error fetching recipe:', error);
-          continue; // Try next iteration
-        }
-        
-        if (data && data.length > 0) {
-          const recipe = data[0];
-          
-          // Check if we already have this recipe
-          if (!uniqueRecipeIds.has(recipe.recipe_id)) {
-            uniqueRecipeIds.add(recipe.recipe_id);
-            
-            // Convert the database result to FilteredRecipe format
-            const filteredRecipe: FilteredRecipe = {
-              recipe_id: recipe.recipe_id,
-              recipe_name: recipe.recipe_name,
-              recipe_description: recipe.recipe_description,
-              recipe_image_url: recipe.recipe_image_url,
-              recipe_prep_time: recipe.recipe_prep_time,
-              recipe_servings: recipe.recipe_servings,
-              recipe_difficulty: recipe.recipe_difficulty,
-              recipe_meal_type: recipe.recipe_meal_type,
-              recipe_price_range: null, // Not returned by current function
-              recipe_distance: null, // Not returned by current function
-              recipe_mood_tags: null, // Not returned by current function
-              recipe_dietary_restrictions: null, // Not returned by current function
-              cuisine_name: recipe.cuisine_name,
-              is_saved: false // Default to false, can be updated separately
-            };
-            
-            recipes.push(filteredRecipe);
-          }
-        }
-        
-        // Small delay to prevent overwhelming the database
-        if (i < maxRetries - 1) {
-          await new Promise(resolve => setTimeout(resolve, 50));
-        }
-      } catch (recipeError) {
-        console.error('Error fetching individual recipe:', recipeError);
-        continue; // Try next iteration
-      }
+    console.log('Fetching filtered recipes with params:', { 
+      mealType: dbMealType, 
+      userId, 
+      count 
+    });
+    
+    // Use the enhanced RPC function with all parameters
+    const { data, error } = await supabase
+      .rpc('get_filtered_recipes', {
+        p_meal_type: dbMealType,
+        p_user_id: userId || null,
+        p_price_range: null, // Let it use default (all price ranges)
+        p_max_distance: null, // Let it use default (all distances)
+        p_mood: null, // Let it use default (all moods)
+        p_limit: count
+      });
+      
+    if (error) {
+      console.error('Error fetching filtered recipes:', error);
+      throw error;
     }
     
-    console.log(`Fetched ${recipes.length} unique recipes out of ${count} requested`);
+    if (!data || data.length === 0) {
+      console.log('No recipes found for criteria:', { 
+        mealType: dbMealType, 
+        userId, 
+        count 
+      });
+      return [];
+    }
+    
+    console.log(`Successfully fetched ${data.length} recipes`);
+    
+    // Convert the database results to FilteredRecipe format
+    const recipes: FilteredRecipe[] = data.map((recipe: any) => ({
+      recipe_id: recipe.recipe_id,
+      recipe_name: recipe.recipe_name,
+      recipe_description: recipe.recipe_description,
+      recipe_image_url: recipe.recipe_image_url,
+      recipe_prep_time: recipe.recipe_prep_time,
+      recipe_servings: recipe.recipe_servings,
+      recipe_difficulty: recipe.recipe_difficulty,
+      recipe_meal_type: recipe.recipe_meal_type,
+      recipe_price_range: recipe.recipe_price_range,
+      recipe_distance: recipe.recipe_distance,
+      recipe_mood_tags: recipe.recipe_mood_tags,
+      recipe_dietary_restrictions: recipe.recipe_dietary_restrictions,
+      cuisine_name: recipe.cuisine_name,
+      is_saved: recipe.is_saved || false
+    }));
+    
     return recipes;
   } catch (error) {
     console.error('Error in fetchFilteredRecipes:', error);

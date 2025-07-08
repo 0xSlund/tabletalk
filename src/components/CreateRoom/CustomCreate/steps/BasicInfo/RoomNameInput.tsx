@@ -422,7 +422,7 @@ export function RoomNameInput({ roomName, setRoomName, foodMode, isLoading }: Ro
     const fetchSuggestionBank = async () => {
       setIsFetchingSuggestions(true);
       try {
-        console.log('Fetching suggestions from Supabase...');
+        console.log('Fetching room name suggestions...');
         // Fetch suggestions from Supabase
         const { data, error } = await supabase
           .from('room_name_suggestions')
@@ -433,7 +433,7 @@ export function RoomNameInput({ roomName, setRoomName, foodMode, isLoading }: Ro
           throw error;
         }
         
-        console.log(`Successfully fetched ${data?.length || 0} suggestions from Supabase`);
+                  console.log(`Successfully fetched ${data?.length || 0} room name suggestions`);
         
         if (data && data.length > 0) {
           // Group suggestions by category

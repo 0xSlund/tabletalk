@@ -110,7 +110,7 @@ export default {
             transform: "perspective(1000px) rotateX(2deg) rotateY(2deg)",
           },
         },
-        quickDecisionRotate: {
+        aiAssistantRotate: {
           "0%": { transform: "rotate(0deg)" },
           "50%": { transform: "rotate(15deg)" },
           "100%": { transform: "rotate(0deg)" },
@@ -128,13 +128,18 @@ export default {
           "0%, 100%": { opacity: 1 },
           "50%": { opacity: 0.7 },
         },
+        shimmer: {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
       },
       animation: {
         "tilt-hover": "tiltHover 3s ease-in-out infinite",
-        "quick-decision-rotate": "quickDecisionRotate 2s ease-in-out infinite",
+        "ai-assistant-rotate": "aiAssistantRotate 2s ease-in-out infinite",
         "card-glow": "cardGlow 2s ease-in-out infinite",
         float: "float 3s ease-in-out infinite",
         pulse: "pulse 2s ease-in-out infinite",
+        shimmer: "shimmer 2s ease-in-out infinite",
       },
       lineHeight: {
         tight: "var(--line-height-tight)",

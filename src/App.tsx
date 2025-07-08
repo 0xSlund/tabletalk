@@ -4,7 +4,8 @@ import { Routes, Route, Navigate, useLocation, useParams } from 'react-router-do
 import { HomeScreen } from './components/HomeScreen';
 import CreateRoom from './components/CreateRoom';
 import { JoinRoomScreen } from './components/JoinRoomScreen';
-import { QuickDecisionScreen } from './components/QuickDecisionScreen';
+import { QuickDecisionWrapper as AIFoodAssistantScreen } from './components/QuickDecisionScreen/QuickDecisionWrapper';
+
 import { ExploreCuisinesScreen } from './components/ExploreCuisinesScreen';
 import { ProfileScreen } from './components/ProfileScreen';
 import { ActiveRoomScreen } from './components/ActiveRoomScreen';
@@ -34,8 +35,8 @@ function App() {
   // Update active tab based on current route
   useEffect(() => {
     const path = location.pathname.substring(1) || 'home';
-    if (path === 'quick-decision') {
-      setActiveTab('quick-decision');
+    if (path === 'ai-food-assistant') {
+      setActiveTab('ai-food-assistant');
     } else if (path === 'explore') {
       setActiveTab('explore-cuisines');
     } else if (path === 'join') {
@@ -121,7 +122,7 @@ function App() {
           <Route path="/create/templates" element={<CreateRoom initialView="templates" />} />
           <Route path="/join" element={<JoinRoomScreen />} />
           <Route path="/join/:roomCode" element={<JoinRedirect />} />
-          <Route path="/quick-decision" element={<QuickDecisionScreen />} />
+                          <Route path="/ai-food-assistant" element={<AIFoodAssistantScreen />} />
           <Route path="/explore" element={<ExploreCuisinesScreen />} />
           <Route path="/profile" element={<ProfileScreen />} />
           <Route path="/active-room" element={<ActiveRoomScreen />} />

@@ -1,13 +1,13 @@
 // Timer options for the settings
 export const timeOptions = [
-  { value: 15, label: '15 minutes', description: 'Quick decision' },
+  { value: 15, label: '15 minutes', description: 'AI analysis' },
   { value: 30, label: '30 minutes', description: 'Standard' },
   { value: 60, label: '1 hour', description: 'Thoughtful' },
   { value: 'custom', label: 'Custom', description: 'Your choice' },
 ]; 
 
 export const timerDescriptions = {
-  '15': 'Quick decisions for simple choices',
+  '15': 'AI analysis for simple choices',
   '30': 'Balanced time for most decisions',
   '60': 'Extra time for important choices',
   'custom': 'Custom duration for specific needs'

@@ -67,7 +67,7 @@ interface AuthState {
 }
 
 interface AppState {
-  activeTab: 'home' | 'create' | 'join' | 'trending' | 'quick-decision' | 'explore-cuisines' | 'profile' | 'active-room' | 'security' | 'history' | 'dietary' | 'favorites';
+  activeTab: 'home' | 'create' | 'join' | 'trending' | 'ai-food-assistant' | 'explore-cuisines' | 'profile' | 'active-room' | 'security' | 'history' | 'dietary' | 'favorites';
   recentRooms: RecentRoom[];
   currentRoom: ActiveRoom;
   auth: AuthState;

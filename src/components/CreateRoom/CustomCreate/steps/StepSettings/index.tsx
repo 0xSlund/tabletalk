@@ -391,7 +391,7 @@ export function StepSettings({
                     <h4 className="font-semibold text-gray-900 mb-4">Most Popular Combinations:</h4>
                     <div className="space-y-3">
                       <div className="text-sm">
-                        <strong>Quick Decision:</strong> 6 people, 15 min timer, same-day deadline
+                        <strong>AI Food Assistant:</strong> 6 people, 15 min timer, same-day deadline
                       </div>
                       <div className="text-sm">
                         <strong>Team Planning:</strong> 10 people, 30 min timer, 1-day deadline with reminders

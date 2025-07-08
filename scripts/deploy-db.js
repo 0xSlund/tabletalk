@@ -30,7 +30,7 @@ if (missingVars.length > 0) {
 
 // Run the command with the environment variables from .env
 try {
-  console.log("Deploying database migrations to Supabase...");
+  console.log("Deploying database migrations...");
   execSync(`supabase db push --db-url "${process.env.SUPABASE_DB_URL}"`, {
     stdio: "inherit",
     env: process.env,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, UtensilsCrossed, X, Smile, HelpCircle, MessageSquare, ArrowRight, ArrowLeft, Check } from 'lucide-react';
+import { Plus, UtensilsCrossed, X, Smile, HelpCircle, MessageSquare, ArrowRight, ArrowLeft, Check, Bot } from 'lucide-react';
 import { useAppStore } from '../../../../lib/store';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -660,18 +660,18 @@ export const FoodSuggestions: React.FC<{
     <div className="w-full">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center">
-          <div className="bg-gradient-to-r from-orange-500 to-amber-500 p-2 rounded-lg mr-3 shadow-sm">
-            <UtensilsCrossed className="text-white" size={22} />
+          <div className="bg-gradient-to-r from-blue-500 to-indigo-500 p-2 rounded-lg mr-3 shadow-sm">
+            <Bot className="text-white" size={22} />
           </div>
-          <h2 className="text-xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 inline-block text-transparent bg-clip-text">
-            Food Suggestions
+          <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 inline-block text-transparent bg-clip-text">
+            AI Food Suggestions
           </h2>
         </div>
         
         {suggestions.length > 0 && (
           <button
             onClick={onAddClick}
-            className="px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-lg hover:from-orange-600 hover:to-amber-600 transition-all duration-200 shadow-sm flex items-center gap-1.5"
+            className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-lg hover:from-blue-600 hover:to-indigo-600 transition-all duration-200 shadow-sm flex items-center gap-1.5"
           >
             <Plus size={18} />
             <span>Add Option</span>
