@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Info, CheckCircle, Search, X, Check, AlertTriangle, Clock, Dices, RefreshCw } from 'lucide-react';
 import { FoodMode, FOOD_MODE_THEMES, PLACEHOLDER_EXAMPLES, SUGGESTION_BANK, getTimePeriodGreeting } from './constants';
 import { cn } from '../../../../../lib/utils';
-import { supabase } from '../../../../../lib/supabaseClient';
+import { supabase } from '../../../../../lib/supabase';
 
 // Add custom animation styles
 const spinAnimationStyle = `

@@ -7,4 +7,14 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  server: {
+    // Optimize development server to reduce excessive requests
+    hmr: {
+      overlay: false, // Disable HMR overlay to reduce requests
+    },
+    // Reduce polling frequency
+    watch: {
+      usePolling: false,
+    },
+  },
 });

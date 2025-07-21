@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { UtensilsCrossed, ArrowLeft, Plus, Trophy, Loader2, Clock } from 'lucide-react';
+import { UtensilsCrossed, ArrowLeft, Plus, Trophy, Loader2, Clock, AlertCircle } from 'lucide-react';
 import { useAppStore } from '../../lib/store';
 
 // Import components
@@ -60,15 +60,20 @@ const ActiveRoomView = ({ roomType }: { roomType?: 'active' | 'completed' | 'exp
   
   const navigateToHome = () => {
     setIsExiting(true);
+    
+    // Reset current room state to prevent interference with other screens
+    const { resetCurrentRoom } = useAppStore.getState();
+    resetCurrentRoom();
+    
     // Clear the previousPage flag and navigate back to where we came from
     useAppStore.setState(state => ({ ...state, previousPage: undefined }));
-    setTimeout(() => {
-      if (previousPage === 'room-history') {
-        navigate('/history');
-      } else {
-        navigate('/');
-      }
-    }, 300);
+    
+    // Navigate immediately without timeout to prevent freezing
+    if (previousPage === 'room-history') {
+      navigate('/history');
+    } else {
+      navigate('/');
+    }
   };
   
   const handleResolveTie = (winnerId: string) => {
@@ -210,65 +215,121 @@ export function ActiveRoomScreen({ roomType = 'active' }: ActiveRoomScreenProps)
   const { currentRoom } = useAppStore();
   const [roomLoaded, setRoomLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingError, setLoadingError] = useState<string | null>(null);
+  const [loadAttempts, setLoadAttempts] = useState(0);
   const navigate = useNavigate();
   const { roomCode } = useParams();
 
   // This effect handles room loading from URL or storage
   useEffect(() => {
     const loadRoom = async () => {
+      // Prevent infinite loading loops
+      if (loadAttempts >= 3) {
+        setLoadingError('Unable to load room after multiple attempts');
+        setTimeout(() => navigate('/'), 2000);
+        return;
+      }
+
+      setLoadingError(null);
+      setLoadAttempts(prev => prev + 1);
+      
       // If we have a room code in the URL, use that
       if (roomCode && (!currentRoom?.code || currentRoom.code !== roomCode)) {
-        console.log(`Loading room from URL with code: ${roomCode}`);
+        console.log(`Loading room from URL with code: ${roomCode} (attempt ${loadAttempts + 1})`);
         setIsLoading(true);
-        const { joinRoom } = useAppStore.getState();
-        const success = await joinRoom(roomCode);
-        if (success) {
-          setRoomLoaded(true);
-        } else {
-          console.error(`Failed to join room with code: ${roomCode}`);
-          navigate('/');
+        
+        try {
+          const { joinRoom } = useAppStore.getState();
+          const success = await joinRoom(roomCode);
+          if (success) {
+            setRoomLoaded(true);
+            setLoadAttempts(0); // Reset on success
+            console.log('Successfully loaded room from URL');
+          } else {
+            console.error(`Failed to join room with code: ${roomCode}`);
+            setLoadingError(`Unable to load room: ${roomCode}`);
+            // Navigate back to home after a delay
+            setTimeout(() => navigate('/'), 2000);
+          }
+        } catch (error) {
+          console.error('Error loading room from URL:', error);
+          setLoadingError('An error occurred while loading the room');
+          setTimeout(() => navigate('/'), 2000);
+        } finally {
+          setIsLoading(false);
         }
-        setIsLoading(false);
         return;
       }
       
       // If we don't have a room code in URL but have a current room, we're good
-      if (currentRoom?.id) {
+      if (currentRoom?.id && currentRoom?.code) {
         setRoomLoaded(true);
+        setLoadAttempts(0); // Reset on success
         // Update URL to include room code if it's missing
-        if (currentRoom.code && !roomCode) {
+        if (!roomCode) {
           navigate(`/active-room/${currentRoom.code}`, { replace: true });
         }
+        console.log('Using existing room data');
         return;
       }
       
       // Fallback: try to load from localStorage (for backward compatibility)
-      if (!roomLoaded) {
+      if (!roomLoaded && !isLoading) {
         const lastRoomId = localStorage.getItem('tabletalk-last-room-id');
         if (lastRoomId) {
+          console.log(`Loading room from localStorage: ${lastRoomId} (attempt ${loadAttempts + 1})`);
           setIsLoading(true);
-          const { joinRoom } = useAppStore.getState();
-          const success = await joinRoom(lastRoomId);
-          if (success) {
-            setRoomLoaded(true);
-            // Get the current room and navigate to its code URL
-            const { currentRoom: loadedRoom } = useAppStore.getState();
-            if (loadedRoom?.code) {
-              navigate(`/active-room/${loadedRoom.code}`, { replace: true });
+          
+          try {
+            const { joinRoom } = useAppStore.getState();
+            const success = await joinRoom(lastRoomId);
+            if (success) {
+              setRoomLoaded(true);
+              setLoadAttempts(0); // Reset on success
+              // Get the current room and navigate to its code URL
+              const { currentRoom: loadedRoom } = useAppStore.getState();
+              if (loadedRoom?.code) {
+                navigate(`/active-room/${loadedRoom.code}`, { replace: true });
+              }
+              console.log('Successfully loaded room from localStorage');
+            } else {
+              console.error('Failed to load room from localStorage');
+              setLoadingError('Unable to find the requested room');
+              setTimeout(() => navigate('/'), 2000);
             }
-          } else {
-            navigate('/');
+          } catch (error) {
+            console.error('Error loading room from localStorage:', error);
+            setLoadingError('An error occurred while loading the room');
+            setTimeout(() => navigate('/'), 2000);
+          } finally {
+            setIsLoading(false);
           }
-          setIsLoading(false);
         } else {
+          console.log('No room code or stored room ID, redirecting to home');
           navigate('/');
         }
       }
     };
     
     loadRoom();
-  }, [roomCode, currentRoom?.id, currentRoom?.code, roomLoaded, navigate]);
+  }, [roomCode, currentRoom?.id, currentRoom?.code, roomLoaded, navigate, isLoading, loadAttempts]);
 
+  // Show error state
+  if (loadingError) {
+    const loadingTheme = getThemeColors(null);
+    return (
+      <div className={`min-h-screen bg-gradient-to-br ${loadingTheme.bgGradient} flex items-center justify-center`}>
+        <div className="text-center max-w-md mx-auto px-4">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-700 mb-2">Room Not Found</h2>
+          <p className="text-gray-600 mb-4">{loadingError}</p>
+          <p className="text-sm text-gray-500">Redirecting you back to home...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state
   if (!currentRoom?.id || isLoading) {
     // Get default theme for loading state since we don't have room data yet
     const loadingTheme = getThemeColors(null);
@@ -276,7 +337,10 @@ export function ActiveRoomScreen({ roomType = 'active' }: ActiveRoomScreenProps)
       <div className={`min-h-screen bg-gradient-to-br ${loadingTheme.bgGradient} flex items-center justify-center`}>
         <div className="text-center">
           <UtensilsCrossed className={`w-16 h-16 ${loadingTheme.loadingIcon} mx-auto mb-4 animate-pulse`} />
-          <h2 className="text-2xl font-bold text-gray-700">Loading room...</h2>
+          <h2 className="text-2xl font-bold text-gray-700 mb-2">Loading room...</h2>
+          {roomCode && (
+            <p className="text-gray-600">Connecting to room: {roomCode}</p>
+          )}
         </div>
       </div>
     );

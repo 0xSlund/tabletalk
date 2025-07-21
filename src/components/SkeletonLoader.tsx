@@ -360,7 +360,7 @@ export function EmptyState({
         >
           <AnimatePresence mode="wait">
             <motion.div
-              key={Icon.name || Math.random()} // Force re-render when icon changes
+              key={Icon.name || 'default-icon'} // Use stable key instead of Math.random()
               initial={{ scale: 0, rotate: -30, opacity: 0 }}
               animate={{ scale: 1, rotate: 0, opacity: 1 }}
               exit={{ scale: 0, rotate: 30, opacity: 0 }}

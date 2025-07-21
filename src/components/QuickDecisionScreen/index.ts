@@ -1,6 +1,5 @@
 // Export all components
 export { SuggestionCard } from './SuggestionCard';
-export { default as SimpleLoader } from './SimpleLoader';
 export { default as ModernLoader } from './components/ModernLoader';
 export { StartScreen } from './StartScreen';
 export { ErrorScreen } from './ErrorScreen';
@@ -9,6 +8,7 @@ export { EmptyState } from './EmptyState';
 export { FilterPanel } from './FilterPanel';
 export { Header } from './Header';
 export { ContentHeader } from './ContentHeader';
+export { SelectionPopup } from './SelectionPopup';
 
 // Export main refactored component
 export { QuickDecisionScreenRefactored } from './QuickDecisionScreenRefactored';

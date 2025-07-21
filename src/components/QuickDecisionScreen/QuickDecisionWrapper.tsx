@@ -6,21 +6,20 @@ export function QuickDecisionWrapper() {
   const location = useLocation();
   const navigationType = useNavigationType();
   
-  // Create a unique key that changes when we navigate to this route
-  // This forces a complete component remount, ensuring fresh state
+  // Create a stable key that only changes when we actually navigate to this route
+  // This prevents infinite re-renders while still ensuring fresh state on navigation
   const componentKey = useMemo(() => {
-    // Include navigation type and timestamp for unique key generation
-    const timestamp = Date.now();
+    // Use stable values that don't change on every render
     const navType = navigationType || 'UNKNOWN';
     const path = location.pathname;
     
-    const key = `quick-decision-${path}-${navType}-${timestamp}`;
-    console.log('🔑 Generated new component key:', key);
+    // Remove timestamp to prevent infinite re-renders
+    const key = `quick-decision-${path}-${navType}`;
     
     return key;
   }, [location.pathname, navigationType]);
   
-  // Force remount with unique key
+  // Force remount with stable key
   return (
     <QuickDecisionScreenRefactored key={componentKey} />
   );

@@ -79,6 +79,11 @@ export function HomeScreen() {
     return () => {
       isMounted.current = false;
       darkModeMediaQuery.removeEventListener('change', handleColorSchemeChange);
+      
+      // Clear global window state to prevent interference with other screens
+      if (window && window.__tabletalk_state) {
+        delete window.__tabletalk_state;
+      }
     };
   }, []); // Remove dependency to prevent reloading on navigation
 
@@ -96,18 +101,45 @@ export function HomeScreen() {
           console.error('Error loading recent rooms on mount:', error);
           hasLoadedRooms.current = false; // Reset on error so we can retry
         } finally {
+          // Always reset loading state, even if component unmounted
           if (isMounted.current) {
+            setIsLoading(false);
+          } else {
+            // If component unmounted, still reset loading to prevent stuck state
             setIsLoading(false);
           }
         }
       }
     };
     
+    // Clear any global window state that might interfere
+    if (window && window.__tabletalk_state) {
+      delete window.__tabletalk_state;
+    }
+    
     // Only load rooms if the user ID exists and we haven't loaded yet
     if (auth.user?.id) {
       loadRecentRooms();
     }
   }, [auth.user?.id]); // Only depend on user ID, not rooms length to prevent loops
+
+  // Force refresh recent rooms when user navigates back to home
+  useEffect(() => {
+    const handleFocus = () => {
+      // If user navigates back to this tab/window, refresh recent rooms
+      if (auth.user && isMounted.current) {
+        hasLoadedRooms.current = false; // Allow reloading
+        const { fetchRecentRooms } = useAppStore.getState();
+        fetchRecentRooms();
+      }
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [auth.user]);
 
   useEffect(() => {
     // Save dark mode preference to localStorage

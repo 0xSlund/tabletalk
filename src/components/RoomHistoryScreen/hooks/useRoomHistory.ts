@@ -9,9 +9,10 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export function useRoomHistory() {
   const { auth: { user } } = useAppStore();
-  const [roomHistory, setRoomHistory] = useState<RoomHistoryItem[]>([]);
+  const [rooms, setRooms] = useState<RoomHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
   const abortControllerRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
 
@@ -27,8 +28,7 @@ export function useRoomHistory() {
     const now = Date.now();
     
     if (!forceRefresh && cached && (now - cached.timestamp) < CACHE_DURATION) {
-      console.log('Using cached room history data');
-      setRoomHistory(cached.data);
+      setRooms(cached.data);
       setIsLoading(false);
       setError(null);
       return;
@@ -46,13 +46,18 @@ export function useRoomHistory() {
     setError(null);
     
     try {
-      // Get all rooms the user has participated in via room_participants
-      const { data: roomsData, error: roomsError } = await supabase
+      setIsLoading(true);
+      setError(null);
+
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const { data: roomParticipants, error } = await supabase
         .from('room_participants')
         .select(`
-          joined_at,
           room_id,
-          rooms:room_id (
+          joined_at,
+          rooms (
             id,
             name,
             code,
@@ -61,24 +66,45 @@ export function useRoomHistory() {
           )
         `)
         .eq('profile_id', user.id)
-        .order('joined_at', { ascending: false });
-        
-      if (roomsError) {
-        console.error('Error fetching rooms:', roomsError);
-        throw roomsError;
+        .gte('joined_at', thirtyDaysAgo.toISOString())
+        .order('joined_at', { ascending: false })
+        .limit(20);
+
+      if (error) {
+        console.error('Error fetching rooms:', error);
+        throw error;
       }
-      
+
+      // Filter out participants without valid rooms
+      const validRoomParticipants = roomParticipants.filter(rp => rp.rooms && rp.rooms.id);
+        
       if (!mountedRef.current) return;
       
-      if (!roomsData || roomsData.length === 0) {
-        console.log('No room history found for user');
-        setRoomHistory([]);
+      if (validRoomParticipants.length === 0) {
+        setRooms([]);
+        setHasMore(false);
         setIsLoading(false);
         return;
       }
       
+      // Get room IDs for additional queries
+      const roomIds = validRoomParticipants.map(rp => rp.rooms.id);
+      
+      // Get participant counts for each room
+      const { data: participantCounts } = await supabase
+        .from('room_participants')
+        .select('room_id')
+        .in('room_id', roomIds);
+      
+      // Count participants per room
+      const participantCountMap: Record<string, number> = {};
+      if (participantCounts) {
+        participantCounts.forEach(p => {
+          participantCountMap[p.room_id] = (participantCountMap[p.room_id] || 0) + 1;
+        });
+      }
+      
       // Get food votes for all these rooms to determine if they have results
-      const roomIds = roomsData.map(item => item.room_id);
       const { data: foodVotes, error: votesError } = await supabase
         .from('food_votes')
         .select(`
@@ -102,7 +128,6 @@ export function useRoomHistory() {
       // Process votes to create voting results format
       const votingResultsByRoom: Record<string, any[]> = {};
       if (foodVotes && foodVotes.length > 0) {
-        console.log('Processing food votes for room history:', foodVotes.length, 'votes found');
         // Group votes by room and count them
         const votesByRoom = foodVotes.reduce((acc, vote) => {
           if (!acc[vote.room_id]) acc[vote.room_id] = {};
@@ -138,32 +163,45 @@ export function useRoomHistory() {
             }];
           }
         });
-         
-        console.log('Voting results by room:', Object.keys(votingResultsByRoom).length, 'rooms have results');
       }
       
-      // Combine the data
-      const formattedHistory = roomsData
-        .filter(item => item.rooms) // Filter out items with null rooms
-        .map(item => ({
-          id: `${item.room_id}-${user.id}`, // Create a unique ID for the history entry
-          joined_at: item.joined_at,
-          room_id: item.room_id,
+      // Format rooms for history display
+      const formattedHistory = validRoomParticipants.map(rp => {
+        const room = rp.rooms;
+        
+        // Format createdAt for display
+        const createdDate = new Date(room.created_at);
+        const formattedDate = createdDate.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: createdDate.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+        });
+        
+        return {
+          id: `${room.id}-${user.id}`, // Create a unique ID for the history entry
+          joined_at: rp.joined_at,
+          room_id: room.id,
           rooms: {
-            ...item.rooms!,
-            voting_results: votingResultsByRoom[item.room_id] || []
+            id: room.id,
+            name: room.name,
+            code: room.code,
+            created_at: room.created_at,
+            expires_at: room.expires_at,
+            voting_results: votingResultsByRoom[room.id] || [],
+            participants: participantCountMap[room.id] || 1,
+            createdAt: formattedDate
           }
-        }));
-      
-      const formattedData = formattedHistory as unknown as RoomHistoryItem[];
+        };
+      });
       
       if (!mountedRef.current) return;
       
-      setRoomHistory(formattedData);
+      setRooms(formattedHistory);
+      setHasMore(formattedHistory.length === 20); // Assuming 20 is the limit for now
       
       // Cache the results
       roomHistoryCache.set(cacheKey, { 
-        data: formattedData, 
+        data: formattedHistory, 
         timestamp: Date.now() 
       });
       
@@ -171,7 +209,7 @@ export function useRoomHistory() {
       if (!mountedRef.current) return; // Don't set error if component unmounted
       console.error('Error loading room history:', err);
       setError('Failed to load room history. Please try again later.');
-      setRoomHistory([]); // Set empty array on error
+      setRooms([]); // Set empty array on error
     } finally {
       if (mountedRef.current) {
         setIsLoading(false);
@@ -193,5 +231,5 @@ export function useRoomHistory() {
     };
   }, []);
 
-  return { roomHistory, isLoading, error, refetch: loadRoomHistory };
+  return { rooms, isLoading, error, hasMore, refetch: loadRoomHistory };
 } 

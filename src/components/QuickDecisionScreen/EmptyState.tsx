@@ -35,29 +35,33 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ onLoad }) => {
           </div>
           
           {/* Floating sparkles */}
-          {[...Array(3)].map((_, i) => (
-            <motion.div
-              key={i}
-              className="absolute w-2 h-2 bg-primary/60 rounded-full"
-              animate={{
-                x: [0, 15, -15, 0],
-                y: [0, -10, 10, 0],
-                opacity: [0, 1, 1, 0],
-                scale: [0, 1, 1, 0]
-              }}
-              transition={{
-                duration: 3,
-                repeat: Infinity,
-                delay: i * 0.8,
-                ease: "easeInOut"
-              }}
-              style={{
-                top: '20%',
-                left: '20%',
-                transform: `translate(-50%, -50%) rotate(${i * 120}deg) translateY(-20px)`
-              }}
-            />
-          ))}
+          {[...Array(3)].map((_, i) => {
+            const sparkleTransform = `translate(-50%, -50%) rotate(${i * 120}deg) translateY(-20px)`;
+            return (
+              <motion.div
+                key={i}
+                className="absolute w-2 h-2 rounded-full"
+                style={{ 
+                  backgroundColor: 'rgba(184, 169, 209, 0.6)',
+                  top: '20%',
+                  left: '20%',
+                  transform: sparkleTransform
+                }}
+                animate={{
+                  x: [0, 15, -15, 0],
+                  y: [0, -10, 10, 0],
+                  opacity: [0, 1, 1, 0],
+                  scale: [0, 1, 1, 0]
+                }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  delay: i * 0.8,
+                  ease: "easeInOut"
+                }}
+              />
+            );
+          })}
         </div>
       </motion.div>
 
@@ -68,11 +72,11 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ onLoad }) => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
       >
-        <h3 className="text-xl font-semibold text-gray-800">
+        <h3 className="text-xl font-semibold" style={{ color: '#4A3B5C' }}>
           No recipes to show yet
         </h3>
         
-        <p className="text-gray-600 max-w-md mx-auto">
+        <p className="max-w-md mx-auto" style={{ color: '#4A4A4A' }}>
           We're ready to find amazing food suggestions for you! Click below to start discovering personalized recipes.
         </p>
       </motion.div>
@@ -88,7 +92,11 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ onLoad }) => {
         <motion.button
           onClick={handleLoad}
           disabled={isLoading}
-          className="bg-gradient-to-r from-primary to-orange-500 text-white py-3 px-8 rounded-xl font-semibold hover:from-primary/90 hover:to-orange-500/90 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mx-auto"
+          className="text-white py-3 px-8 rounded-xl font-semibold transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mx-auto"
+          style={{ 
+            background: 'linear-gradient(to right, #B8A9D1, #7D6B8A)',
+            boxShadow: '0 10px 15px -3px rgba(184, 169, 209, 0.3)'
+          }}
           whileHover={!isLoading ? { scale: 1.05 } : {}}
           whileTap={!isLoading ? { scale: 0.95 } : {}}
         >
@@ -107,7 +115,8 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ onLoad }) => {
 
         {/* Helper Text */}
         <motion.p 
-          className="text-sm text-gray-500"
+          className="text-sm"
+          style={{ color: '#4A4A4A' }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
@@ -148,13 +157,13 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ onLoad }) => {
             transition={{ delay: 0.7 + index * 0.1 }}
             whileHover={{ scale: 1.02 }}
           >
-            <div className="text-primary mb-2 flex justify-center">
+            <div className="mb-2 flex justify-center" style={{ color: '#B8A9D1' }}>
               {feature.icon}
             </div>
-            <h4 className="font-medium text-gray-800 mb-1">
+            <h4 className="font-medium mb-1" style={{ color: '#7D6B8A' }}>
               {feature.title}
             </h4>
-            <p className="text-xs text-gray-600">
+            <p className="text-xs" style={{ color: '#4A4A4A' }}>
               {feature.description}
             </p>
           </motion.div>

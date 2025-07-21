@@ -6,55 +6,24 @@ interface ModernLoaderProps {
   progress: number;
 }
 
-const ShimmerCard = ({ delay = 0 }: { delay?: number }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay, duration: 0.5 }}
-    className="bg-white rounded-xl p-6 shadow-lg relative overflow-hidden"
-  >
-    {/* Shimmer effect overlay */}
-    <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
-    
-    {/* Card skeleton content */}
-    <div className="space-y-4">
-      {/* Header skeleton */}
-      <div className="flex items-center space-x-3">
-        <div className="w-12 h-12 bg-gray-200 rounded-full animate-pulse"></div>
-        <div className="flex-1 space-y-2">
-          <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
-          <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2"></div>
-        </div>
-      </div>
-      
-      {/* Image skeleton */}
-      <div className="w-full h-48 bg-gray-200 rounded-lg animate-pulse"></div>
-      
-      {/* Content skeleton */}
-      <div className="space-y-3">
-        <div className="h-4 bg-gray-200 rounded animate-pulse w-full"></div>
-        <div className="h-4 bg-gray-200 rounded animate-pulse w-5/6"></div>
-        <div className="h-4 bg-gray-200 rounded animate-pulse w-4/6"></div>
-      </div>
-      
-      {/* Tags skeleton */}
-      <div className="flex space-x-2">
-        <div className="h-6 bg-gray-200 rounded-full animate-pulse w-16"></div>
-        <div className="h-6 bg-gray-200 rounded-full animate-pulse w-20"></div>
-        <div className="h-6 bg-gray-200 rounded-full animate-pulse w-14"></div>
-      </div>
-    </div>
-  </motion.div>
-);
-
 export default function ModernLoader({ progress }: ModernLoaderProps) {
-
-  const stages = [
-    { key: 'analyzing', icon: Sparkles, label: 'Analyzing preferences' },
-    { key: 'searching', icon: ChefHat, label: 'Searching recipes' },
-    { key: 'filtering', icon: Clock, label: 'Filtering results' },
-    { key: 'preparing', icon: Users, label: 'Preparing suggestions' }
+  // Define the processing steps with their progress ranges
+  const steps = [
+    { range: [0, 30], text: 'Analyzing your taste preferences...', icon: Sparkles },
+    { range: [30, 60], text: 'Searching through recipe database...', icon: ChefHat },
+    { range: [60, 75], text: 'Filtering recipes for your dietary needs...', icon: Clock },
+    { range: [75, 90], text: 'Fetching personalized recipes...', icon: Users },
+    { range: [90, 95], text: 'Preparing suggestions for you...', icon: Sparkles },
+    { range: [95, 100], text: 'Almost ready...', icon: Sparkles }
   ];
+
+  // Get the current active step based on progress
+  const getCurrentStep = () => {
+    return steps.find(step => progress >= step.range[0] && progress < step.range[1]) || 
+           (progress >= 100 ? steps[steps.length - 1] : steps[0]);
+  };
+
+  const currentStep = getCurrentStep();
 
   return (
     <motion.div
@@ -62,9 +31,9 @@ export default function ModernLoader({ progress }: ModernLoaderProps) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
-      className="space-y-8"
+      className="space-y-8 max-w-md mx-auto"
     >
-      {/* Modern progress header */}
+      {/* Main Header */}
       <div className="text-center space-y-4">
         <motion.div
           initial={{ scale: 0 }}
@@ -91,8 +60,8 @@ export default function ModernLoader({ progress }: ModernLoaderProps) {
         </motion.h3>
       </div>
 
-      {/* Progress bar with gradient and glow */}
-      <div className="space-y-4">
+      {/* Progress Bar Section */}
+      <div className="space-y-6">
         <div className="relative">
           <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
             <motion.div
@@ -123,77 +92,67 @@ export default function ModernLoader({ progress }: ModernLoaderProps) {
             </div>
           </motion.div>
         </div>
-      </div>
 
-      {/* Completed steps text list */}
-      <div className="space-y-3 min-h-[120px]">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          className="text-center"
-        >
-          <p className="text-gray-600 font-medium">Processing Steps</p>
-        </motion.div>
-        
-        <div className="space-y-2">
-          {stages.map((stage, index) => {
-            const stepProgress = (index + 1) * 25;
-            const isCompleted = progress >= stepProgress;
-            const wasJustCompleted = progress >= stepProgress && progress < stepProgress + 25;
-            
-            return (
-              <motion.div
-                key={stage.key}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ 
-                  opacity: isCompleted ? [0, 1, 1, 0.3] : 0,
-                  x: isCompleted ? 0 : -20
-                }}
-                transition={{
-                  duration: isCompleted ? 3 : 0.3,
-                  times: isCompleted ? [0, 0.1, 0.7, 1] : undefined,
-                  delay: isCompleted ? 0.2 : 0
-                }}
-                className="flex items-center space-x-3 text-sm"
+        {/* Game-style Processing Step Display */}
+        <div className="text-center min-h-[80px] flex items-center justify-center">
+          <motion.div
+            key={currentStep.text} // This ensures re-mount when step changes
+            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.9 }}
+            transition={{ 
+              duration: 0.5,
+              ease: "easeOut"
+            }}
+            className="flex items-center space-x-3 bg-white/80 backdrop-blur-sm rounded-lg px-6 py-4 shadow-md border border-gray-100"
+          >
+            {/* Animated Icon */}
+            <motion.div
+              animate={{ 
+                scale: [1, 1.1, 1],
+                rotate: [0, 5, -5, 0]
+              }}
+              transition={{ 
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+              className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center"
+            >
+                              <currentStep.icon className="w-4 h-4 text-purple-500" />
+            </motion.div>
+
+            {/* Processing Text with Typing Effect */}
+            <motion.div className="text-left">
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="text-sm font-medium text-gray-700"
               >
-                <motion.div
-                  animate={wasJustCompleted ? { scale: [1, 1.2, 1] } : {}}
-                  transition={{ duration: 0.5 }}
-                  className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"
-                />
-                <span className="text-gray-700 font-medium">{stage.label}</span>
-                {isCompleted && (
-                  <motion.span
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: [0, 1, 0] }}
-                    transition={{ duration: 2, delay: 0.5 }}
-                    className="text-green-600 text-xs"
-                  >
-                    ✓ Complete
-                  </motion.span>
-                )}
+                {currentStep.text}
+              </motion.p>
+              
+              {/* Animated dots */}
+              <motion.div className="flex space-x-1 mt-1">
+                {[0, 1, 2].map((i) => (
+                  <motion.div
+                    key={i}
+                    className="w-1 h-1 bg-blue-500 rounded-full"
+                    animate={{
+                      scale: [1, 1.5, 1],
+                      opacity: [0.3, 1, 0.3]
+                    }}
+                    transition={{
+                      duration: 1.2,
+                      repeat: Infinity,
+                      delay: i * 0.2
+                    }}
+                  />
+                ))}
               </motion.div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Skeleton preview cards */}
-      <div className="space-y-4">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          className="text-center"
-        >
-          <p className="text-gray-600 font-medium">Preview of incoming recipes</p>
-        </motion.div>
-        
-        <div className="grid gap-4">
-          <ShimmerCard delay={1.0} />
-          {progress > 50 && <ShimmerCard delay={1.2} />}
-          {progress > 75 && <ShimmerCard delay={1.4} />}
+            </motion.div>
+          </motion.div>
         </div>
       </div>
     </motion.div>

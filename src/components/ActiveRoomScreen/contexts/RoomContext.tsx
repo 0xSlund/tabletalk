@@ -164,7 +164,7 @@ export const RoomProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const timeRemaining = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
             setRemainingTime(timeRemaining);
           }
-        }, 1000);
+        }, 30000); // Further reduced from 10000ms to 30000ms (30 seconds) to reduce requests
         
         return () => clearInterval(timer);
       }

@@ -111,6 +111,12 @@ export function ExploreCuisinesScreen() {
   // Set mounted state when component mounts
   useEffect(() => {
     setMounted(true);
+    
+    // Clear any global window state that might interfere
+    if (window && window.__tabletalk_state) {
+      delete window.__tabletalk_state;
+    }
+    
     return () => {
       setMounted(false);
       // Cancel any pending requests
@@ -128,6 +134,11 @@ export function ExploreCuisinesScreen() {
       setError(null);
       setIsExiting(false);
       setCuisinesLoaded(false);
+      
+      // Clear global window state to prevent interference with other screens
+      if (window && window.__tabletalk_state) {
+        delete window.__tabletalk_state;
+      }
     };
   }, []);
 
@@ -184,7 +195,11 @@ export function ExploreCuisinesScreen() {
       setCuisines(fallbackCuisines as Cuisine[]);
       setCuisinesLoaded(true);
     } finally {
+      // Always reset loading state, even if component unmounted
       if (mounted) {
+        setLoading(false);
+      } else {
+        // If component unmounted, still reset loading to prevent stuck state
         setLoading(false);
       }
     }
@@ -195,6 +210,23 @@ export function ExploreCuisinesScreen() {
       loadCuisines();
     }
   }, [mounted, cuisinesLoaded, loading, loadCuisines]);
+
+  // Force refresh cuisines when user navigates back to this screen
+  useEffect(() => {
+    const handleFocus = () => {
+      // If user navigates back to this tab/window, refresh cuisines
+      if (mounted && !loading) {
+        setCuisinesLoaded(false); // Allow reloading
+        loadCuisines();
+      }
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [mounted, loading, loadCuisines]);
 
   const loadRecipes = useCallback(async (cuisine: Cuisine) => {
     if (!mounted) return;
@@ -244,7 +276,11 @@ export function ExploreCuisinesScreen() {
       setRecipes(fallbackRecipes as Recipe[]);
       setSelectedCuisine(cuisine);
     } finally {
+      // Always reset loading state, even if component unmounted
       if (mounted) {
+        setLoading(false);
+      } else {
+        // If component unmounted, still reset loading to prevent stuck state
         setLoading(false);
       }
     }

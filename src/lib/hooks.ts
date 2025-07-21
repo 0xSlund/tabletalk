@@ -97,69 +97,77 @@ export function useDebouncedValue<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-// Real-time Room Subscription Hook
+// Real-time Room Subscription Hook - TEMPORARILY DISABLED FOR DEBUGGING
 export function useRoomSubscription(roomId: string | null) {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Changed to false
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (!roomId) return;
+    // TEMPORARILY DISABLED - Testing if this causes excessive requests
+    // if (!roomId) return;
 
-    setLoading(true);
-    setError(null);
+    // setLoading(true);
+    // setError(null);
 
-    // Subscribe to room changes - only depend on roomId to prevent re-subscriptions
-    const roomSubscription = supabase
-      .channel(`food_suggestions:${roomId}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'food_suggestions',
-        filter: `room_id=eq.${roomId}`
-      }, async () => {
-        try {
-          // Refresh room data
-          const { data: suggestions, error: suggestionsError } = await supabase
-            .from('food_suggestions')
-            .select(`
-              id, name, created_at, 
-              profiles:profiles(id, username),
-              food_votes:food_votes(
-                id, user_id, reaction
-              )
-            `)
-            .eq('room_id', roomId);
+    // // Subscribe to room changes - only depend on roomId to prevent re-subscriptions
+    // const roomSubscription = supabase
+    //   .channel(`food_suggestions:${roomId}`)
+    //   .on('postgres_changes', {
+    //     event: '*',
+    //     schema: 'public',
+    //     table: 'food_suggestions',
+    //     filter: `room_id=eq.${roomId}`
+    //   }, async () => {
+    //     try {
+    //       // OPTIMIZED: Only refresh if we have a room context that needs updates
+    //       const currentRoomData = useAppStore.getState().currentRoom;
+    //       if (!currentRoomData || currentRoomData.id !== roomId) {
+    //         return; // Don't fetch if room context doesn't match
+    //       }
+
+    //       // Simplified query - reduced fields for better performance
+    //       const { data: suggestions, error: suggestionsError } = await supabase
+    //         .from('food_suggestions')
+    //         .select(`
+    //           id, name, created_at, 
+    //           profiles!created_by(id, username),
+    //           food_votes(id, user_id, reaction)
+    //         `)
+    //         .eq('room_id', roomId)
+    //         .limit(50); // Limit results for performance
             
-          if (suggestionsError) throw suggestionsError;
+    //       if (suggestionsError) throw suggestionsError;
           
-          if (suggestions) {
-            const currentRoomData = useAppStore.getState().currentRoom;
-            const formattedSuggestions = suggestions.map(s => ({
-              id: s.id,
-              name: s.name,
-              text: s.name, // Keep backwards compatibility
-              votes: s.food_votes?.length || 0,
-              author: s.profiles?.username || 'Unknown',
-              timestamp: new Date(s.created_at).toISOString(),
-              food_votes: s.food_votes || []
-            }));
+    //       if (suggestions) {
+    //         const formattedSuggestions = suggestions.map(s => ({
+    //           id: s.id,
+    //           name: s.name,
+    //           text: s.name, // Keep backwards compatibility
+    //           votes: s.food_votes?.length || 0,
+    //           author: s.profiles?.username || 'Unknown',
+    //           timestamp: new Date(s.created_at).toISOString(),
+    //           food_votes: s.food_votes || []
+    //         }));
             
-            // Use getState() to avoid function dependency
-            useAppStore.getState().updateRoom({
-              ...currentRoomData,
-              suggestions: formattedSuggestions
-            });
-          }
-        } catch (err) {
-          console.error('Error refreshing suggestions:', err);
-          setError(err instanceof Error ? err : new Error('Unknown error'));
-        }
-      })
-      .subscribe();
+    //         // Use getState() to avoid function dependency
+    //         useAppStore.getState().updateRoom({
+    //           ...currentRoomData,
+    //           suggestions: formattedSuggestions
+    //         });
+    //       }
+    //     } catch (err) {
+    //       console.error('Error refreshing suggestions:', err);
+    //       setError(err instanceof Error ? err : new Error('Unknown error'));
+    //     }
+    //   })
+    //   .subscribe();
 
-    return () => {
-      roomSubscription.unsubscribe();
-    };
+    // return () => {
+    //   roomSubscription.unsubscribe();
+    // };
+
+    // DISABLED FOR TESTING
+    return () => {};
   }, [roomId]); // Only depend on roomId - no store functions
 
   return { loading, error };

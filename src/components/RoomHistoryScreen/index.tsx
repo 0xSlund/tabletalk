@@ -36,7 +36,7 @@ import SkeletonLoader from '../SkeletonLoader';
 export function RoomHistoryScreen() {
   const navigate = useNavigate();
   const { joinRoom, auth } = useAppStore();
-  const { roomHistory, isLoading } = useRoomHistory();
+  const { rooms: roomHistory, isLoading } = useRoomHistory();
   const { darkMode } = useDarkMode();
 
   // Filter states
@@ -146,6 +146,11 @@ export function RoomHistoryScreen() {
   const sortedRooms = sortRooms(filteredRooms, sortBy, sortDirection);
   const statusCounts = getStatusCounts(roomHistory);
 
+  console.log('RoomHistory: roomHistory length:', roomHistory.length);
+  console.log('RoomHistory: filteredRooms length:', filteredRooms.length);
+  console.log('RoomHistory: sortedRooms length:', sortedRooms.length);
+  console.log('RoomHistory: statusFilter:', statusFilter);
+
   // Legacy filter for backward compatibility
   const legacyFilteredRooms = sortedRooms.filter(item => {
     if (statusFilter === 'all') return true;
@@ -155,6 +160,8 @@ export function RoomHistoryScreen() {
       : 'active';
     return status === statusFilter;
   });
+  
+  console.log('RoomHistory: legacyFilteredRooms length:', legacyFilteredRooms.length);
 
   // Pagination - always use grid view
   const roomsPerPage = ROOMS_PER_PAGE_GRID;
@@ -388,20 +395,53 @@ export function RoomHistoryScreen() {
           {/* Main controls row */}
           <div className="relative">
             <div className="flex items-center justify-between mb-6">
-                            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3">
                 <AdvancedFilters
                   showAdvancedFilters={showAdvancedFilters}
                   onToggleAdvancedFilters={() => setShowAdvancedFilters(!showAdvancedFilters)}
                   darkMode={darkMode}
                 />
 
-              <StatusFilters
-                statusFilter={statusFilter}
-                onStatusChange={setStatusFilter}
-                statusCounts={statusCounts}
-                darkMode={darkMode}
-              />
-            </div>
+                <StatusFilters
+                  statusFilter={statusFilter}
+                  onStatusChange={setStatusFilter}
+                  statusCounts={statusCounts}
+                  darkMode={darkMode}
+                />
+              </div>
+              
+              {/* Sort Options */}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <span className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Sort:
+                  </span>
+                  <motion.button
+                    onClick={() => setSortBy(sortBy === 'date' ? 'name' : 'date')}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                      darkMode
+                        ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 border border-gray-600'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
+                    }`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    {sortBy === 'date' ? 'Date' : 'Name'}
+                  </motion.button>
+                  <motion.button
+                    onClick={() => setSortDirection(sortDirection === 'desc' ? 'asc' : 'desc')}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                      darkMode
+                        ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 border border-gray-600'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
+                    }`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    {sortDirection === 'desc' ? '↓' : '↑'}
+                  </motion.button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -614,102 +654,6 @@ export function RoomHistoryScreen() {
                           <Clock className="w-4 h-4" />
                           <span>Last 7 Days</span>
                           {selectedDateRange === 'last7' && (
-                            <motion.button
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDateRange({ start: '', end: '' });
-                                setSelectedDateRange(null);
-                              }}
-                              className="ml-auto p-1 rounded-full hover:bg-white/20 transition-all"
-                            >
-                              <X className="w-3 h-3" />
-                            </motion.button>
-                          )}
-                        </motion.button>
-                        
-                        {/* Last 30 Days Button */}
-                        <motion.button
-                          onClick={() => {
-                            if (selectedDateRange === 'last30') {
-                              // If already selected, deselect it
-                              setDateRange({ start: '', end: '' });
-                              setSelectedDateRange(null);
-                            } else {
-                              // If not selected, select it
-                              const today = new Date();
-                              const lastMonth = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-                              setDateRange({
-                                start: lastMonth.toISOString().split('T')[0],
-                                end: today.toISOString().split('T')[0]
-                              });
-                              setSelectedDateRange('last30');
-                            }
-                          }}
-                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                            selectedDateRange === 'last30'
-                              ? darkMode
-                                ? 'bg-green-500 text-white shadow-lg shadow-green-500/30 border border-green-400'
-                                : 'bg-green-500 text-white shadow-lg shadow-green-500/30 border border-green-400'
-                              : darkMode
-                                ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 border border-gray-600'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
-                          }`}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                        >
-                          <Calendar className="w-4 h-4" />
-                          <span>Last 30 Days</span>
-                          {selectedDateRange === 'last30' && (
-                            <motion.button
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDateRange({ start: '', end: '' });
-                                setSelectedDateRange(null);
-                              }}
-                              className="ml-auto p-1 rounded-full hover:bg-white/20 transition-all"
-                            >
-                              <X className="w-3 h-3" />
-                            </motion.button>
-                          )}
-                        </motion.button>
-
-                        {/* Last 3 Months Button */}
-                        <motion.button
-                          onClick={() => {
-                            if (selectedDateRange === 'last3months') {
-                              // If already selected, deselect it
-                              setDateRange({ start: '', end: '' });
-                              setSelectedDateRange(null);
-                            } else {
-                              // If not selected, select it
-                              const today = new Date();
-                              const threeMonthsAgo = new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000);
-                              setDateRange({
-                                start: threeMonthsAgo.toISOString().split('T')[0],
-                                end: today.toISOString().split('T')[0]
-                              });
-                              setSelectedDateRange('last3months');
-                            }
-                          }}
-                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                            selectedDateRange === 'last3months'
-                              ? darkMode
-                                ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30 border border-orange-400'
-                                : 'bg-orange-500 text-white shadow-lg shadow-orange-500/30 border border-orange-400'
-                              : darkMode
-                                ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 border border-gray-600'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
-                          }`}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                        >
-                          <Calendar className="w-4 h-4" />
-                          <span>Last 3 Months</span>
-                          {selectedDateRange === 'last3months' && (
                             <motion.button
                               initial={{ scale: 0 }}
                               animate={{ scale: 1 }}

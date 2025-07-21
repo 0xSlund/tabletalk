@@ -3,6 +3,7 @@ import { MessageCircle, Send, User } from 'lucide-react';
 import { useAppStore } from '../../../../lib/store';
 import { formatTimeAgo } from '../../utils/formatters';
 import { supabase } from '../../../../lib/supabase';
+import { getCachedAvatarUrl } from '../../../../lib/avatarCache';
 
 interface Message {
   id: string;
@@ -47,66 +48,70 @@ export const Discussion: React.FC<DiscussionProps> = ({ roomExpired }) => {
   // Store channel reference to reuse for broadcasts
   const channelRef = useRef<any>(null);
 
-  // Set up real-time subscription for messages and pending states
+  // Set up real-time subscription for messages and pending states - TEMPORARILY DISABLED
   useEffect(() => {
-    if (!currentRoom?.id) return;
+    // TEMPORARILY DISABLED - Testing if this causes excessive requests
+    // if (!currentRoom?.id) return;
 
-    const channel = supabase
-      .channel(`messages:${currentRoom.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `room_id=eq.${currentRoom.id}`,
-        },
-        (payload) => {
-          // When a new message is inserted, remove any pending messages from that user
-          const newMessage = payload.new as any;
-          if (newMessage.profile_id) {
-            setPendingMessages(prev => 
-              prev.filter(pm => pm.userId !== newMessage.profile_id)
-            );
-            // Don't reload messages - let the store handle the update via real-time
-          }
-        }
-      )
-      .on(
-        'broadcast',
-        { event: 'pending_message' },
-        (payload) => {
-          // Handle incoming pending message broadcasts from other users
-          const { type, pendingMessage } = payload.payload;
+    // const channel = supabase
+    //   .channel(`messages:${currentRoom.id}`)
+    //   .on(
+    //     'postgres_changes',
+    //     {
+    //       event: 'INSERT',
+    //       schema: 'public',
+    //       table: 'messages',
+    //       filter: `room_id=eq.${currentRoom.id}`,
+    //     },
+    //     (payload) => {
+    //       // When a new message is inserted, remove any pending messages from that user
+    //       const newMessage = payload.new as any;
+    //       if (newMessage.profile_id) {
+    //         setPendingMessages(prev => 
+    //           prev.filter(pm => pm.userId !== newMessage.profile_id)
+    //         );
+    //         // Don't reload messages - let the store handle the update via real-time
+    //       }
+    //     }
+    //   )
+    //   .on(
+    //     'broadcast',
+    //     { event: 'pending_message' },
+    //     (payload) => {
+    //       // Handle incoming pending message broadcasts from other users
+    //       const { type, pendingMessage } = payload.payload;
           
-          if (type === 'add' && pendingMessage.userId !== currentUser?.id) {
-            // Add pending message from another user
-            setPendingMessages(prev => {
-              // Avoid duplicates
-              const exists = prev.some(pm => pm.id === pendingMessage.id);
-              if (!exists) {
-                return [...prev, pendingMessage];
-              }
-              return prev;
-            });
-          } else if (type === 'remove') {
-            // Remove pending message
-            setPendingMessages(prev => 
-              prev.filter(pm => pm.id !== pendingMessage.id)
-            );
-          }
-        }
-      )
-      .subscribe();
+    //       if (type === 'add' && pendingMessage.userId !== currentUser?.id) {
+    //         // Add pending message from another user
+    //         setPendingMessages(prev => {
+    //           // Avoid duplicates
+    //           const exists = prev.some(pm => pm.id === pendingMessage.id);
+    //           if (!exists) {
+    //             return [...prev, pendingMessage];
+    //           }
+    //           return prev;
+    //         });
+    //       } else if (type === 'remove') {
+    //         // Remove pending message
+    //         setPendingMessages(prev => 
+    //           prev.filter(pm => pm.id !== pendingMessage.id)
+    //         );
+    //       }
+    //     }
+    //   )
+    //   .subscribe();
 
-    // Store channel reference for reuse
-    channelRef.current = channel;
+    // // Store channel reference for reuse
+    // channelRef.current = channel;
 
-    return () => {
-      supabase.removeChannel(channel);
-      channelRef.current = null;
-    };
-  }, [currentRoom?.id]); // Remove loadMessages and currentUser?.id dependencies
+    // return () => {
+    //   supabase.removeChannel(channel);
+    //   channelRef.current = null;
+    // };
+
+    // DISABLED FOR TESTING
+    return () => {};
+  }, [currentRoom?.id]);
   
   // Scroll to bottom whenever messages update
   useEffect(() => {
@@ -186,12 +191,11 @@ export const Discussion: React.FC<DiscussionProps> = ({ roomExpired }) => {
   // Get user avatar
   const getUserAvatar = (userId: string) => {
     if (userId === currentUser?.id) {
-      return currentUser.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`;
+      return getCachedAvatarUrl(userId, currentUser.avatar_url);
     }
     
-    // Find participant avatar
-    const participant = currentRoom?.participants?.find(p => p.id === userId);
-    return participant?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`;
+    const participant = currentRoom.participants.find(p => p.id === userId);
+    return getCachedAvatarUrl(userId, participant?.avatar);
   };
 
   // Animated dots component

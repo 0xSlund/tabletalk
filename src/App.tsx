@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
 
 import { HomeScreen } from './components/HomeScreen';
-import CreateRoom from './components/CreateRoom';
+import CreateRoomScreen from './components/CreateRoom';
 import { JoinRoomScreen } from './components/JoinRoomScreen';
 import { QuickDecisionWrapper as AIFoodAssistantScreen } from './components/QuickDecisionScreen/QuickDecisionWrapper';
 
@@ -29,8 +29,32 @@ function App() {
   const location = useLocation();
   const { 
     setActiveTab, 
-    auth
+    auth,
+    setUser,
+    setSession,
+    setLoading
   } = useAppStore();
+
+  // Global cleanup effect to ensure clean state on app start
+  useEffect(() => {
+    // Clear any leftover global window state from previous sessions
+    if (window && window.__tabletalk_state) {
+      delete window.__tabletalk_state;
+    }
+    
+    // Clear any leftover localStorage items that might cause issues
+    const cleanupKeys = [
+      'tabletalk-last-room-id',
+      'tabletalk-stuck-state',
+      'tabletalk-loading-flag'
+    ];
+    
+    cleanupKeys.forEach(key => {
+      if (localStorage.getItem(key)) {
+        localStorage.removeItem(key);
+      }
+    });
+  }, []);
 
   // Update active tab based on current route
   useEffect(() => {
@@ -45,12 +69,17 @@ function App() {
       setActiveTab('create');
     } else if (path === 'profile') {
       setActiveTab('profile');
+    } else if (path === 'favorites') {
+      setActiveTab('favorites');
+    } else if (path === 'dietary') {
+      setActiveTab('dietary');
     } else {
       setActiveTab('home');
     }
   }, [location, setActiveTab]);
 
   useEffect(() => {
+    // Initialize Supabase auth
     const initializeAuth = async () => {
       // Use getState to avoid function dependencies
       const { setLoading, setSession, setUser, fetchUserProfile } = useAppStore.getState();
@@ -113,16 +142,16 @@ function App() {
       <AnimatePresence mode="wait" initial={false}>
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={<HomeScreen />} />
-          <Route path="/create" element={<CreateRoom />} />
-          <Route path="/create/quick" element={<CreateRoom initialView="quick" />} />
-          <Route path="/create/custom" element={<CreateRoom initialView="custom" />} />
-          <Route path="/create/custom/basic-info" element={<CreateRoom initialView="custom" initialStep="basic-info" />} />
-          <Route path="/create/custom/settings" element={<CreateRoom initialView="custom" initialStep="settings" />} />
-          <Route path="/create/custom/summary" element={<CreateRoom initialView="custom" initialStep="summary" />} />
-          <Route path="/create/templates" element={<CreateRoom initialView="templates" />} />
+          <Route path="/create" element={<CreateRoomScreen />} />
+          <Route path="/create/quick" element={<CreateRoomScreen initialView="quick" />} />
+          <Route path="/create/custom" element={<CreateRoomScreen initialView="custom" />} />
+          <Route path="/create/custom/basic-info" element={<CreateRoomScreen initialView="custom" initialStep="basic-info" />} />
+          <Route path="/create/custom/settings" element={<CreateRoomScreen initialView="custom" initialStep="settings" />} />
+          <Route path="/create/custom/summary" element={<CreateRoomScreen initialView="custom" initialStep="summary" />} />
+          <Route path="/create/templates" element={<CreateRoomScreen initialView="templates" />} />
           <Route path="/join" element={<JoinRoomScreen />} />
           <Route path="/join/:roomCode" element={<JoinRedirect />} />
-                          <Route path="/ai-food-assistant" element={<AIFoodAssistantScreen />} />
+          <Route path="/ai-food-assistant" element={<AIFoodAssistantScreen />} />
           <Route path="/explore" element={<ExploreCuisinesScreen />} />
           <Route path="/profile" element={<ProfileScreen />} />
           <Route path="/active-room" element={<ActiveRoomScreen />} />

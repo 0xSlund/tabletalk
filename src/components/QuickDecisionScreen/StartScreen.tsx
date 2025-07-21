@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Play, Sparkles, Heart, ThumbsUp, ThumbsDown, Zap } from 'lucide-react';
+import { Play, Sparkles, Heart, ThumbsUp, ThumbsDown, Compass } from 'lucide-react';
 import { StartScreenProps } from './types';
 
 export const StartScreen: React.FC<StartScreenProps> = ({ onStart }) => {
@@ -29,7 +29,7 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStart }) => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
       >
-        <h3 className="text-2xl font-bold text-gray-800">
+        <h3 className="text-2xl font-bold" style={{ color: '#4A3B5C' }}>
           Ready to discover amazing food?
         </h3>
       </motion.div>
@@ -42,12 +42,15 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStart }) => {
         transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
       >
         <motion.h4 
-          className="text-lg font-semibold text-gray-800 mb-4 flex items-center justify-center gap-2"
+          className="text-lg font-semibold mb-4 flex items-center justify-center gap-2"
+          style={{ color: '#5A9B9B' }}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <Zap className="w-5 h-5 text-primary" />
+          <div className="text-slate-500 bg-slate-100 rounded p-1 text-md">
+            <Compass className="w-5 h-5" />
+          </div>
           How it works
         </motion.h4>
         
@@ -55,38 +58,47 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStart }) => {
           {[
             {
               step: "1",
-              icon: <Sparkles className="w-6 h-6 text-primary" />,
+              icon: <Sparkles className="w-6 h-6 text-emerald-500" />,
               title: "Browse Recipes",
-              description: "Swipe through personalized suggestions"
+              description: "Swipe through personalized suggestions",
+              iconColor: 'text-emerald-500',
+              titleColor: 'text-emerald-600',
+              iconBg: 'bg-emerald-500/30'
             },
             {
               step: "2", 
               icon: <div className="flex gap-1">
-                      <ThumbsUp className="w-3 h-3 text-green-500" />
-                      <ThumbsDown className="w-3 h-3 text-red-500" />
+                      <ThumbsUp className="w-3 h-3 text-blue-500" />
+                      <ThumbsDown className="w-3 h-3 text-blue-500" />
                     </div>,
               title: "Vote & Swipe",
-              description: "Like or pass on each recipe"
+              description: "Like or pass on each recipe",
+              iconColor: 'text-blue-500',
+              titleColor: 'text-blue-600',
+              iconBg: 'bg-blue-500/30'
             },
             {
               step: "3",
               icon: <Heart className="w-6 h-6 text-pink-500" />,
               title: "Save Favorites",
-              description: "Build your personal cookbook"
+              description: "Build your personal cookbook",
+              iconColor: 'text-pink-500',
+              titleColor: 'text-pink-600',
+              iconBg: 'bg-pink-500/30'
             }
           ].map((item, index) => (
             <motion.div
               key={item.step}
-              className="text-center p-4 bg-white rounded-xl shadow-sm border border-gray-200"
+              className="text-center p-4 rounded-xl shadow-sm border border-gray-200 bg-neutral-50"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 + index * 0.1 }}
               whileHover={{ scale: 1.02 }}
             >
-              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 ${item.iconBg}`}>
                 {item.icon}
               </div>
-              <h5 className="font-semibold text-gray-800 mb-1">
+              <h5 className={`font-semibold mb-1 ${item.titleColor}`}>
                 {item.title}
               </h5>
               <p className="text-sm text-gray-600">
@@ -96,8 +108,8 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStart }) => {
           ))}
         </div>
       </motion.div>
-      
-      {/* Start Button - Now positioned before Quick Tips */}
+
+            {/* Start Button */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -106,35 +118,12 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStart }) => {
         <motion.button
           onClick={handleStart}
           disabled={isStarting}
-          className="bg-gradient-to-r from-primary to-orange-500 text-white py-4 px-8 rounded-xl font-semibold text-lg hover:from-primary/90 hover:to-orange-500/90 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3 mx-auto"
+          className="bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-semibold py-4 px-8 rounded-xl text-lg transition-shadow duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed mx-auto hover:shadow-cyan-300/40"
           whileHover={!isStarting ? { scale: 1.05 } : {}}
           whileTap={!isStarting ? { scale: 0.95 } : {}}
         >
-          <motion.div
-            animate={isStarting ? { rotate: 360 } : {}}
-            transition={isStarting ? { duration: 1, repeat: Infinity, ease: "linear" } : {}}
-          >
-            <Play className="w-6 h-6" />
-          </motion.div>
           {isStarting ? 'Starting...' : 'Start Smart Suggestions'}
         </motion.button>
-      </motion.div>
-
-      {/* Interaction Tips - Now positioned after Start Button */}
-      <motion.div 
-        className="bg-blue-50 border border-blue-200 rounded-xl p-4 max-w-md mx-auto"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8 }}
-      >
-        <h5 className="font-semibold text-blue-800 mb-2">
-          💡 Quick Tip
-        </h5>
-        <div className="text-sm text-blue-700 space-y-1">
-          <p>• <strong>Swipe right</strong> or <strong>double-tap</strong> to like</p>
-          <p>• <strong>Swipe left</strong> to pass</p>
-          <p>• Use the ❤️ button to save to favorites</p>
-        </div>
       </motion.div>
     </motion.div>
   );

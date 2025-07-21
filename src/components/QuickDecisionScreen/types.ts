@@ -18,10 +18,6 @@ export interface SuggestionCardProps {
   onSave: () => void;
 }
 
-export interface SimpleLoaderProps {
-  progress: number;
-}
-
 export interface FilterPanelProps {
   showFilters: boolean;
   selectedFilter: MealType;
@@ -43,7 +39,6 @@ export interface SuggestionScreenProps {
   suggestion: SuggestionWithVote;
   onVote: (vote: 'yes' | 'no') => void;
   onSave: () => void;
-  onLoadMore: () => void;
 }
 
 export interface EmptyStateProps {

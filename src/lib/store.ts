@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase, type Profile, type Room } from './supabase';
 import { persist } from 'zustand/middleware';
+import { getCachedAvatarUrl } from './avatarCache';
 
 interface RecentRoom {
   id: string;
@@ -11,6 +12,7 @@ interface RecentRoom {
   expiresAt?: string;
   winningChoice?: string;
   code?: string;
+  createdAt?: string;
 }
 
 interface Participant {
@@ -79,6 +81,7 @@ interface AppState {
   setUser: (user: Profile | null) => void;
   setSession: (session: any | null) => void;
   setLoading: (loading: boolean) => void;
+  resetCurrentRoom: () => void;
   fetchUserProfile: (userId: string) => Promise<void>;
   fetchRecentRooms: () => Promise<void>;
   fetchRoomHistory: () => Promise<void>;
@@ -130,6 +133,32 @@ export const useAppStore = create<AppState>()(
       setSession: (session) => set((state) => ({ auth: { ...state.auth, session } })),
       setLoading: (loading) => set((state) => ({ auth: { ...state.auth, loading } })),
       
+      // Reset current room state when leaving rooms
+      resetCurrentRoom: () => {
+        set({
+          currentRoom: {
+            id: '',
+            name: '',
+            code: '',
+            participants: [],
+            messages: [],
+            suggestions: [],
+            createdAt: new Date().toISOString(),
+            expiresAt: new Date().toISOString(),
+            isActive: true,
+            foodMode: null,
+            votes: {}
+          },
+          isViewingCompletedRoom: false,
+          hasVotedOnAll: false
+        });
+        
+        // Clear global window state
+        if (window && window.__tabletalk_state) {
+          delete window.__tabletalk_state;
+        }
+      },
+      
       fetchUserProfile: async (userId) => {
         try {
           const { data: profile, error } = await supabase
@@ -155,7 +184,7 @@ export const useAppStore = create<AppState>()(
                 if (p.id === userId) {
                   return {
                     ...p,
-                    avatar: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`
+                    avatar: getCachedAvatarUrl(userId, profile.avatar_url)
                   };
                 }
                 return p;
@@ -176,35 +205,36 @@ export const useAppStore = create<AppState>()(
       
       fetchRecentRooms: async () => {
         const { auth } = get();
-        if (!auth.user) return;
+        if (!auth.user) {
+          // Ensure we reset state even if no user
+          set({ recentRooms: [] });
+          return;
+        }
         
         try {
-          
           // Get recent rooms with a single optimized query using joins
           // Limit to last 30 days and max 20 rooms for performance
           const thirtyDaysAgo = new Date();
           thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
           
-          const { data: rooms, error } = await supabase
-              .from('rooms')
-              .select(`
+          // Use the EXACT same query as the history page to ensure consistency
+          const { data: roomParticipants, error } = await supabase
+            .from('room_participants')
+            .select(`
+              room_id,
+              joined_at,
+              rooms (
                 id,
                 name,
                 code,
                 created_at,
-                expires_at,
-              room_participants!inner (
-                profile_id,
-                joined_at
-              ),
-                voting_results (
-                suggestion_options (text)
+                expires_at
               )
             `)
-            .eq('room_participants.profile_id', auth.user.id)
-            .gte('room_participants.joined_at', thirtyDaysAgo.toISOString())
-            .order('created_at', { ascending: false })
-            .limit(20); // Limit to 20 most recent rooms for better performance
+            .eq('profile_id', auth.user.id)
+            .gte('joined_at', thirtyDaysAgo.toISOString())
+            .order('joined_at', { ascending: false })
+            .limit(20);
             
           if (error) {
             console.error('Error fetching rooms:', error);
@@ -212,13 +242,34 @@ export const useAppStore = create<AppState>()(
             return;
           }
           
-          if (!rooms || rooms.length === 0) {
+          if (!roomParticipants || roomParticipants.length === 0) {
+            set({ recentRooms: [] });
+            return;
+          }
+          
+          // Filter out participants without valid rooms (exactly like history page)
+          const validRoomParticipants = roomParticipants.filter(rp => rp.rooms && rp.rooms.id);
+          
+          if (validRoomParticipants.length === 0) {
+            set({ recentRooms: [] });
+            return;
+          }
+          
+          // Additional filter: Ensure rooms are within 30 days based on created_at as well
+          const now = new Date();
+          const recentValidParticipants = validRoomParticipants.filter(rp => {
+            const roomCreatedAt = new Date(rp.rooms.created_at);
+            const daysDiff = (now.getTime() - roomCreatedAt.getTime()) / (1000 * 3600 * 24);
+            return daysDiff <= 30; // Only include rooms created within 30 days
+          });
+          
+          if (recentValidParticipants.length === 0) {
             set({ recentRooms: [] });
             return;
           }
           
           // Get participant counts in a separate optimized query
-          const roomIds = rooms.map(room => room.id);
+          const roomIds = recentValidParticipants.map(rp => rp.rooms.id);
           const { data: participantCounts } = await supabase
             .from('room_participants')
             .select('room_id')
@@ -232,36 +283,99 @@ export const useAppStore = create<AppState>()(
             });
           }
           
-          const formattedRooms = rooms.map(room => {
-            const now = new Date();
-            const expiresAt = new Date(room.expires_at);
-            const isActive = expiresAt > now;
-            
-            let winningChoice;
-            if (room.voting_results && room.voting_results.length > 0) {
-              const firstResult = room.voting_results[0];
-              if (firstResult.suggestion_options && firstResult.suggestion_options.length > 0) {
-                winningChoice = firstResult.suggestion_options[0].text;
+          // Get food votes to determine winning choices (same as history page)
+          const { data: foodVotes } = await supabase
+            .from('food_votes')
+            .select(`
+              room_id,
+              suggestion_id,
+              reaction,
+              food_suggestions!inner (
+                id,
+                name
+              )
+            `)
+            .in('room_id', roomIds);
+          
+          // Process votes to create voting results (same logic as history page)
+          const votingResultsByRoom: Record<string, any[]> = {};
+          if (foodVotes && foodVotes.length > 0) {
+            const votesByRoom = foodVotes.reduce((acc, vote) => {
+              if (!acc[vote.room_id]) acc[vote.room_id] = {};
+              if (!acc[vote.room_id][vote.suggestion_id]) {
+                acc[vote.room_id][vote.suggestion_id] = {
+                  suggestion_id: vote.suggestion_id,
+                  suggestion_name: (vote.food_suggestions as any).name,
+                  votes: []
+                };
               }
-            }
+              acc[vote.room_id][vote.suggestion_id].votes.push(vote.reaction);
+              return acc;
+            }, {} as Record<string, Record<string, any>>);
             
-            return {
-              id: room.id,
-              name: room.name,
-              participants: participantCountMap[room.id] || 1,
-              lastActive: room.created_at,
-              isActive,
-              expiresAt: room.expires_at,
-              winningChoice,
-              code: room.code
-            };
-          });
+            Object.keys(votesByRoom).forEach(roomId => {
+              const roomVotes = Object.values(votesByRoom[roomId]);
+              if (roomVotes.length > 0) {
+                const winner = roomVotes.reduce((best, current) => 
+                  current.votes.length > best.votes.length ? current : best
+                );
+                
+                votingResultsByRoom[roomId] = [{
+                  room_id: roomId,
+                  suggestion_id: winner.suggestion_id,
+                  winning_option: {
+                    id: winner.suggestion_id,
+                    text: winner.suggestion_name
+                  }
+                }];
+              }
+            });
+          }
+          
+          // Format rooms using the same structure as history page
+          const formattedRooms = recentValidParticipants
+            .map(rp => {
+              const room = rp.rooms;
+              const now = new Date();
+              const expiresAt = new Date(room.expires_at);
+              const isActive = expiresAt > now;
+              
+              // Get winning choice from the processed voting results
+              let winningChoice;
+              const roomVotingResults = votingResultsByRoom[room.id];
+              if (roomVotingResults && roomVotingResults.length > 0) {
+                winningChoice = roomVotingResults[0].winning_option?.text;
+              }
+              
+              // Format createdAt for display
+              const createdDate = new Date(room.created_at);
+              const formattedDate = createdDate.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: createdDate.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+              });
+              
+              return {
+                id: room.id,
+                name: room.name,
+                participants: participantCountMap[room.id] || 1,
+                lastActive: rp.joined_at, // Use joined_at as lastActive like history page
+                isActive,
+                expiresAt: room.expires_at,
+                winningChoice,
+                code: room.code, // Ensure code is available for navigation
+                createdAt: formattedDate // Add missing createdAt field for display
+              };
+            });
           
           set({ recentRooms: formattedRooms });
         } catch (error) {
           console.error('Error fetching recent rooms:', error);
-          // Set empty array on error so UI doesn't stay in loading state
+          // Always set empty array on error so UI doesn't stay in loading state
           set({ recentRooms: [] });
+        } finally {
+          // Ensure we always reset any loading states
+          // This is a safety measure to prevent stuck loading states
         }
       },
       
@@ -293,7 +407,6 @@ export const useAppStore = create<AppState>()(
         if (!auth.user) return { roomId: null, roomCode: null };
         
         try {
-          console.log(`createRoom: Starting to create room "${roomName}" with duration ${timerDuration} minutes`);
           
           // Generate a random 6-character alphanumeric code
           const generateRoomCode = () => {
@@ -313,8 +426,6 @@ export const useAppStore = create<AppState>()(
           
           // Format expiry date properly
           const formattedExpiryDate = expiryDate.toISOString();
-          
-          console.log(`Creating room "${roomName}" with expiry time: ${formattedExpiryDate}, duration: ${timerDuration} minutes, current time: ${new Date().toISOString()}`);
           
           // Create the room in Supabase - creating a simpler data structure
           const newRoom = {
@@ -342,7 +453,6 @@ export const useAppStore = create<AppState>()(
           }
           
           const createdRoom = room[0]; // Get the first room from the array
-          console.log(`Room created successfully: ${createdRoom.id}, with expiry: ${createdRoom.expires_at}`);
           
           // Add the creator as a participant and host
           const participantData = {
@@ -369,7 +479,7 @@ export const useAppStore = create<AppState>()(
             participants: [{
               id: auth.user.id,
               name: auth.user.username || auth.user.email?.split('@')[0] || 'User',
-              avatar: auth.user.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${auth.user.id}`,
+              avatar: getCachedAvatarUrl(auth.user.id, auth.user.avatar_url),
               isHost: true
             }],
             messages: [],
@@ -381,7 +491,6 @@ export const useAppStore = create<AppState>()(
             votes: {}
           };
           
-          console.log('Setting currentRoom with new room:', newRoomState);
           set({ 
             currentRoom: newRoomState,
             activeTab: 'active-room' // Set the active tab to active-room
@@ -400,22 +509,22 @@ export const useAppStore = create<AppState>()(
         }
       },
       
-      joinRoom: async (roomCode) => {
+      joinRoom: async (roomIdentifier) => {
         const { auth } = get();
         if (!auth.user) return false;
         
         try {
-          console.log(`Joining room with code ${roomCode}`);
+          // Clear any existing loading states first
+          set(state => ({ ...state, isViewingCompletedRoom: false }));
           
-          // First check if we're joining via code or ID
-          const isJoiningViaId = roomCode.length > 10; // IDs are typically longer than room codes
+          // Check if we're joining via code or ID
+          const isJoiningViaId = roomIdentifier.length > 10; // IDs are typically longer than room codes
           
           // Find the room
           let room;
           let roomError;
           
           if (isJoiningViaId) {
-            console.log('Joining via room ID');
             // Find the room by ID
             const response = await supabase
               .from('rooms')
@@ -431,14 +540,13 @@ export const useAppStore = create<AppState>()(
                   is_host
                 )
               `)
-              .eq('id', roomCode)
+              .eq('id', roomIdentifier)
               .single();
               
             roomError = response.error;
             room = response.data;
           } else {
             // Find the room by code
-            console.log('Joining via room code');
             const response = await supabase
               .from('rooms')
               .select(`
@@ -453,7 +561,7 @@ export const useAppStore = create<AppState>()(
                   is_host
                 )
               `)
-              .eq('code', roomCode)
+              .eq('code', roomIdentifier)
               .single();
               
             roomError = response.error;
@@ -465,12 +573,15 @@ export const useAppStore = create<AppState>()(
             return false;
           }
           
+          if (!room) {
+            console.error('Room not found');
+            return false;
+          }
+          
           // Check if room is expired
           const now = new Date();
           const expiresAt = new Date(room.expires_at);
           const isExpired = expiresAt <= now;
-          
-          console.log(`Room expiry status: now=${now.toISOString()}, expires=${expiresAt.toISOString()}, isExpired=${isExpired}`);
           
           // Update room participants (if not already added)
           const isParticipant = room.room_participants.some(p => p.profile_id === auth.user?.id);
@@ -519,9 +630,9 @@ export const useAppStore = create<AppState>()(
               id,
               name,
               created_at,
-              user_id,
+              created_by,
               room_id,
-              profiles (
+              profiles!created_by (
                 id,
                 username,
                 avatar_url
@@ -538,7 +649,7 @@ export const useAppStore = create<AppState>()(
           const formattedParticipants = participants.map(p => ({
             id: p.profile_id,
             name: p.profiles ? p.profiles.username : 'Unknown',
-            avatar: p.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.profile_id}`,
+            avatar: getCachedAvatarUrl(p.profile_id, p.profiles?.avatar_url),
             isHost: p.is_host
           }));
           
@@ -575,7 +686,6 @@ export const useAppStore = create<AppState>()(
             try {
               // Dynamic import to avoid circular dependency
               const { handleExpiredRoom } = await import('../components/ActiveRoomScreen/utils/expiredRoomHandler');
-              console.log('Room is expired during join, handling with utility');
               handleExpiredRoom(room.id);
             } catch (error) {
               console.error('Failed to handle expired room:', error);
@@ -654,7 +764,6 @@ export const useAppStore = create<AppState>()(
         if (!currentRoom.id || !auth.user || !suggestionId) return false;
         
         try {
-          console.log(`Recording vote for suggestion ${suggestionId} with reaction ${reaction} in room ${currentRoom.id}`);
           
           // Check if user already voted for this suggestion
           const { data: existingVote, error: checkError } = await supabase
@@ -672,7 +781,6 @@ export const useAppStore = create<AppState>()(
           
           // If vote exists, update it; otherwise, insert a new vote
           if (existingVote) {
-            console.log('Updating existing vote:', existingVote.id);
             const { data, error: updateError } = await supabase
               .from('food_votes')
               .update({ 
@@ -686,7 +794,6 @@ export const useAppStore = create<AppState>()(
             if (updateError) throw updateError;
             voteResult = data;
           } else {
-            console.log('Creating new vote for user', auth.user.id);
             const { data, error: insertError } = await supabase
               .from('food_votes')
               .insert({
@@ -704,7 +811,7 @@ export const useAppStore = create<AppState>()(
           if (!voteResult) {
             console.error('No vote result returned after save operation');
           } else {
-            console.log('Vote saved successfully:', voteResult);
+            
           }
           
           // Remove automatic vote refresh - use optimistic updates instead
@@ -770,7 +877,6 @@ export const useAppStore = create<AppState>()(
         if (!roomId || !auth.user) return false;
         
         try {
-          console.log(`Fetching votes for room ${roomId}`);
           
           // Fetch all votes for this room
           const { data: allVotes, error: votesError } = await supabase
@@ -789,15 +895,12 @@ export const useAppStore = create<AppState>()(
             return false;
           }
           
-          console.log(`Found ${allVotes?.length || 0} votes for room ${roomId}`);
-          
           // Get the current room safely
           const { currentRoom } = get();
           
           // If the current room ID doesn't match the requested roomId,
           // don't proceed with further processing (likely navigated away)
           if (currentRoom.id !== roomId) {
-            console.log('Current room has changed, not processing vote data');
             return false;
           }
           
@@ -861,7 +964,8 @@ export const useAppStore = create<AppState>()(
           
           // If the room is expired, update its status in the database and ensure we set isViewingCompletedRoom flag
           if (isExpired) {
-            console.log('Room is expired, setting isViewingCompletedRoom flag');
+            // Removed console logging for performance
+            // console.log('Room is expired, setting isViewingCompletedRoom flag');
             
             // Only update if needed
             if (!get().isViewingCompletedRoom) {
@@ -873,7 +977,8 @@ export const useAppStore = create<AppState>()(
             
             // Make vote data available via global state for easier access
             if (window) {
-              console.log('Storing vote data in window global state');
+              // Removed console logging for performance
+              // console.log('Storing vote data in window global state');
               // @ts-ignore - Adding dynamic property to window
               window.__tabletalk_state = {
                 ...(window.__tabletalk_state || {}),
@@ -884,13 +989,6 @@ export const useAppStore = create<AppState>()(
               };
             }
           }
-          
-          console.log('Vote data updated:', {
-            votesCount: allVotes?.length || 0,
-            votesByUser: Object.keys(votesMap).length,
-            votesBySuggestion: Object.keys(votesBySuggestion).length,
-            isExpired
-          });
           
           return true;
         } catch (error) {

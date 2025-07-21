@@ -44,23 +44,39 @@ export function PageTransition({
   );
 }
 
-export const slideVariants = {
-  hidden: { opacity: 0, x: 100 },
+export const pageVariants = {
+  initial: { opacity: 0, y: 10 }, // Reduced from y: 20
+  in: { opacity: 1, y: 0 },
+  out: { opacity: 0, y: -10 }, // Reduced from y: -20
+  transition: {
+    duration: 0.2, // Reduced from 0.3
+    ease: "easeOut"
+  }
+};
+
+// Shared animation variants for different components
+export const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.03, // Reduced from 0.05
+      delayChildren: 0.05 // Reduced from 0.1
+    }
+  }
+};
+
+export const fadeInUp = {
+  hidden: { 
+    opacity: 0, 
+    y: 15 // Reduced from 30
+  },
   visible: { 
     opacity: 1, 
-    x: 0,
+    y: 0,
     transition: {
-      type: "spring",
-      stiffness: 260,
-      damping: 20
-    }
-  },
-  exit: { 
-    opacity: 0, 
-    x: -100,
-    transition: {
-      duration: 0.32,
-      ease: "easeInOut"
+      duration: 0.25, // Reduced from 0.4
+      ease: "easeOut"
     }
   }
 };
@@ -97,24 +113,6 @@ export const popVariants = {
     scale: 0.8,
     transition: {
       duration: 0.2
-    }
-  }
-};
-
-export const staggerContainer = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.2
-    }
-  },
-  exit: {
-    opacity: 0,
-    transition: {
-      staggerChildren: 0.05,
-      staggerDirection: -1
     }
   }
 };

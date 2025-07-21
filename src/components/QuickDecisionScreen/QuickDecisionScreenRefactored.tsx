@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../../lib/store';
 import { supabase, fetchFilteredRecipes } from '../../lib/supabase';
@@ -92,12 +92,21 @@ export function QuickDecisionScreenRefactored() {
   // Enhanced transition state
   const [isTransitioning, setIsTransitioning] = useState(false);
   
-  // Prevent multiple requests with ref
+  // Prevent multiple requests with ref and add abort controller
   const requestInProgress = useRef(false);
+  const abortController = useRef<AbortController | null>(null);
 
   // Reset function to initialize/reset all state
   const resetToInitialState = () => {
-    console.log('🔄 Resetting QuickDecisionScreen to initial state');
+    // Removed console logging for performance
+    // console.log('🔄 Resetting QuickDecisionScreen to initial state');
+    
+    // Cancel any ongoing requests
+    if (abortController.current) {
+      // console.log('🚫 Aborting ongoing request');
+      abortController.current.abort();
+      abortController.current = null;
+    }
     
     setIsStarted(false);
     setSuggestions([]);
@@ -111,8 +120,65 @@ export function QuickDecisionScreenRefactored() {
     // Reset request tracking
     requestInProgress.current = false;
     
-    console.log('✅ State reset complete');
+    // console.log('✅ State reset complete');
   };
+
+  // Component initialization and cleanup
+  useEffect(() => {
+    // Force reset all state on mount to ensure clean initialization
+    resetToInitialState();
+    
+    // Add visibility change listener to handle tab switching
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // If we're stuck in loading state when page becomes visible, reset
+        if (requestInProgress.current && loadingState === 'loading') {
+          // Cancel any ongoing requests
+          if (abortController.current) {
+            abortController.current.abort();
+            abortController.current = null;
+          }
+          
+          requestInProgress.current = false;
+          setLoadingState('idle');
+          setLoadingProgress(0);
+          setIsTransitioning(false);
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Cleanup on unmount
+    return () => {
+      // Remove event listener
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      
+      // Cancel any ongoing requests
+      if (abortController.current) {
+        abortController.current.abort();
+        abortController.current = null;
+      }
+      
+      // Clear any stuck request flags
+      requestInProgress.current = false;
+      
+      // Reset all state to prevent issues on re-mount
+      setIsStarted(false);
+      setSuggestions([]);
+      setCurrentIndex(0);
+      setLoadingState('idle');
+      setLoadingProgress(0);
+      setError(null);
+      setIsTransitioning(false);
+      setShowFilters(false);
+      
+      // Clear global window state to prevent interference with other screens
+      if (window && window.__tabletalk_state) {
+        delete window.__tabletalk_state;
+      }
+    };
+  }, []); // Only run on mount/unmount
 
   // Simple function to compute current content state (no memoization to prevent infinite loops)
   const getContentState = (): ContentState => {
@@ -149,12 +215,30 @@ export function QuickDecisionScreenRefactored() {
 
   // Enhanced loading function with smooth transitions and modern UX
   const loadSuggestions = async () => {
+    // Force clear any stuck state before starting
     if (requestInProgress.current) {
-      console.log('🔄 Request already in progress, skipping');
+      // Cancel any ongoing requests
+      if (abortController.current) {
+        abortController.current.abort();
+        abortController.current = null;
+      }
+      
+      requestInProgress.current = false;
+    }
+    
+    if (loadingState === 'loading') {
+      setLoadingState('idle');
+      setLoadingProgress(0);
+      setIsTransitioning(false);
+    }
+    
+    // Double-check after forced reset
+    if (requestInProgress.current) {
       return;
     }
     
-    console.log('🚀 Starting loadSuggestions for filter:', selectedFilter);
+    // Create new abort controller for this request
+    abortController.current = new AbortController();
     
     requestInProgress.current = true;
     setLoadingState('loading');
@@ -162,60 +246,64 @@ export function QuickDecisionScreenRefactored() {
     setLoadingProgress(0);
     setIsTransitioning(true);
     
-    // Add timeout to prevent infinite loading
+    // Add timeout to prevent infinite loading - reduced to 10 seconds
     const timeoutId = setTimeout(() => {
-      console.error('⏰ Loading timeout after 30 seconds');
+      // Cancel the request
+      if (abortController.current) {
+        abortController.current.abort();
+        abortController.current = null;
+      }
+      
       setError('Loading timed out. Please try again.');
       setLoadingState('error');
       setLoadingProgress(0);
       setIsTransitioning(false);
       requestInProgress.current = false;
-    }, 30000); // 30 second timeout
+    }, 10000); // Reduced to 10 second timeout
     
     try {
       // Stage 1: Analyzing preferences (0-25%)
-      setLoadingProgress(15);
-      console.log('📊 Progress: 15% - Analyzing preferences...');
+      setLoadingProgress(25);
       await new Promise(resolve => setTimeout(resolve, 400));
       
-      setLoadingProgress(25);
-      console.log('📊 Progress: 25% - Preferences analyzed');
-      
       // Stage 2: Searching recipes (25-50%)
-      setLoadingProgress(35);
-      console.log('📊 Progress: 35% - Searching recipes...');
+      setLoadingProgress(50);
       
       const mealType = selectedFilter === 'all' ? null : selectedFilter;
       await new Promise(resolve => setTimeout(resolve, 300));
       
-      setLoadingProgress(50);
-      console.log('📊 Progress: 50% - Recipes found');
-      
       // Stage 3: Filtering results (50-75%)
-      setLoadingProgress(60);
-      console.log('📊 Progress: 60% - Filtering results...');
+      setLoadingProgress(75);
+      
+      // Check if request was aborted before making API call
+      if (abortController.current?.signal.aborted) {
+        return;
+      }
       
       // Make the API call
       let recipes;
       try {
-        recipes = await fetchFilteredRecipes(mealType, user?.id || null, 5);
-        console.log('🎉 API call completed, received:', recipes?.length || 0, 'recipes');
+        recipes = await fetchFilteredRecipes(mealType, user?.id || null, 5, abortController.current?.signal);
       } catch (apiError) {
-        console.error('💥 API call failed:', apiError);
+        // Check if it was an abort error
+        if (apiError instanceof Error && (apiError.name === 'AbortError' || apiError.message === 'Request was aborted')) {
+          return;
+        }
+        
         throw new Error(`API call failed: ${apiError instanceof Error ? apiError.message : 'Unknown API error'}`);
       }
       
-      setLoadingProgress(75);
-      console.log('📊 Progress: 75% - Results filtered');
+      // Check if request was aborted after API call
+      if (abortController.current?.signal.aborted) {
+        return;
+      }
       
       // Stage 4: Preparing suggestions (75-100%)
-      setLoadingProgress(85);
-      console.log('📊 Progress: 85% - Preparing suggestions...');
+      setLoadingProgress(100);
       
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 400));
       
       if (!recipes || recipes.length === 0) {
-        console.log('⚠️ No recipes found');
         setError('No recipes found. Try adjusting your filters or try again later.');
         setSuggestions([]);
         setLoadingState('error');
@@ -232,24 +320,14 @@ export function QuickDecisionScreenRefactored() {
         votedAt: undefined
       }));
       
-      console.log('🎯 Processed', suggestionsWithVotes.length, 'suggestions');
-      
-      // Complete loading with smooth progress
-      setLoadingProgress(95);
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
-      setLoadingProgress(100);
-      console.log('📊 Progress: 100% - Complete!');
-      
       // Set data and prepare for transition
       setSuggestions(suggestionsWithVotes);
       setCurrentIndex(0);
       
       // Smooth transition delay
-      await new Promise(resolve => setTimeout(resolve, 400));
+      await new Promise(resolve => setTimeout(resolve, 200));
       
       // Complete transition
-      console.log('🎉 Transitioning to suggestions');
       setLoadingState('success');
       setLoadingProgress(0);
       setIsTransitioning(false);
@@ -258,10 +336,13 @@ export function QuickDecisionScreenRefactored() {
       clearTimeout(timeoutId);
       
     } catch (err) {
-      console.error('❌ Error in loadSuggestions:', err);
-      
       // Clear timeout on error
       clearTimeout(timeoutId);
+      
+      // Check if it was an abort error (user navigated away)
+      if (err instanceof Error && (err.name === 'AbortError' || err.message === 'Request was aborted')) {
+        return; // Don't show error for aborted requests
+      }
       
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(`Failed to load suggestions: ${errorMessage}`);
@@ -270,24 +351,30 @@ export function QuickDecisionScreenRefactored() {
       setLoadingProgress(0);
       setIsTransitioning(false);
     } finally {
+      // Clear timeout since we're done
+      clearTimeout(timeoutId);
+      
+      // Clean up abort controller
+      if (abortController.current) {
+        abortController.current = null;
+      }
+      
       requestInProgress.current = false;
     }
   };
 
   // Event handlers with better state management
   const handleStart = () => {
-    console.log('🎬 Starting Quick Decision...');
+    // console.log('🎬 Starting Quick Decision...');
     setIsStarted(true);
     loadSuggestions();
   };
 
   const handleVote = (vote: 'yes' | 'no') => {
     if (!getCurrentSuggestion() || currentIndex >= suggestions.length) {
-      console.log('⚠️ Cannot vote: no current suggestion');
+      // console.log('⚠️ Cannot vote: no current suggestion');
       return;
     }
-    
-    console.log(`👍👎 Voting ${vote} on suggestion:`, getCurrentSuggestion()?.recipe_name);
     
     const newSuggestions = [...suggestions];
     newSuggestions[currentIndex] = {
@@ -300,10 +387,44 @@ export function QuickDecisionScreenRefactored() {
     // Move to next suggestion with animation delay
     setTimeout(() => {
       if (currentIndex < suggestions.length - 1) {
-        console.log('➡️ Moving to next suggestion');
+        // console.log('➡️ Moving to next suggestion');
         setCurrentIndex(currentIndex + 1);
       } else {
-        console.log('🔄 End of suggestions, loading more...');
+        // console.log('🔄 End of suggestions, loading more...');
+        // console.log('🔍 Before loadSuggestions call:', { 
+        //   requestInProgress: requestInProgress.current,
+        //   loadingState,
+        //   currentIndex,
+        //   suggestionsLength: suggestions.length 
+        // });
+        
+        // Force clear any stuck state before loading more
+        if (requestInProgress.current) {
+          // console.log('🚨 Clearing stuck requestInProgress flag');
+          
+          // Cancel any ongoing requests
+          if (abortController.current) {
+            abortController.current.abort();
+            abortController.current = null;
+          }
+          
+          requestInProgress.current = false;
+        }
+        
+        // Reset loading progress if it's stuck
+        if (loadingProgress > 0 && loadingProgress < 100) {
+          // console.log('🚨 Resetting stuck loading progress from:', loadingProgress);
+          setLoadingProgress(0);
+        }
+        
+        // Reset loading state if stuck
+        if (loadingState === 'loading') {
+          // console.log('🚨 Resetting stuck loading state');
+          setLoadingState('idle');
+          setIsTransitioning(false);
+        }
+        
+        // console.log('🔄 Calling loadSuggestions...');
         loadSuggestions();
       }
     }, 1000);
@@ -311,46 +432,57 @@ export function QuickDecisionScreenRefactored() {
 
   const handleSave = async () => {
     if (!user || !getCurrentSuggestion()) {
-      console.log('⚠️ Cannot save: no user or suggestion');
+      // console.log('⚠️ Cannot save: no user or suggestion');
       return;
     }
     
-    console.log('💾 Saving suggestion:', getCurrentSuggestion()?.recipe_name);
+    const currentSuggestion = getCurrentSuggestion()!;
+    // console.log('💾 Saving suggestion:', currentSuggestion.recipe_name);
     
     try {
-      if (getCurrentSuggestion()?.is_saved) {
-        await supabase.rpc('remove_recipe_from_favorites', { 
-          p_user_id: user.id, 
-          p_recipe_id: getCurrentSuggestion()?.recipe_id 
-        });
+      if (currentSuggestion.is_saved) {
+        // Remove from saved_suggestions
+        const { error } = await supabase
+          .from('saved_suggestions')
+          .delete()
+          .eq('profile_id', user.id)
+          .eq('recipe_id', currentSuggestion.recipe_id);
+        
+        if (error) throw error;
+        // console.log('✅ Successfully removed from favorites');
       } else {
-        await supabase.rpc('save_recipe_to_favorites', { 
-          p_user_id: user.id, 
-          p_recipe_id: getCurrentSuggestion()?.recipe_id 
-        });
+        // Add to saved_suggestions
+        const { error } = await supabase
+          .from('saved_suggestions')
+          .insert({
+            profile_id: user.id,
+            recipe_id: currentSuggestion.recipe_id
+          });
+        
+        if (error) throw error;
+        // console.log('✅ Successfully added to favorites');
       }
       
+      // Update local state
       const newSuggestions = [...suggestions];
       newSuggestions[currentIndex] = {
         ...newSuggestions[currentIndex],
-        is_saved: !getCurrentSuggestion()?.is_saved
+        is_saved: !currentSuggestion.is_saved
       };
       setSuggestions(newSuggestions);
       
-      console.log('✅ Successfully saved/unsaved suggestion');
-      
     } catch (err) {
-      console.error('❌ Error saving suggestion:', err);
+      // console.error('❌ Error saving suggestion:', err);
     }
   };
 
   const handleFilterChange = (filter: MealType) => {
-    console.log('🎛️ Filter changed to:', filter);
+    // console.log('🎛️ Filter changed to:', filter);
     setSelectedFilter(filter);
   };
 
   const handleApplyFilters = () => {
-    console.log('✅ Applying filters');
+    // console.log('✅ Applying filters');
     setShowFilters(false);
     if (isStarted) {
       loadSuggestions();
@@ -366,7 +498,7 @@ export function QuickDecisionScreenRefactored() {
   };
 
   const handleRetry = () => {
-    console.log('🔄 Retrying...');
+    // console.log('🔄 Retrying...');
     resetToInitialState();
     
     // Small delay to ensure state is updated
@@ -376,14 +508,33 @@ export function QuickDecisionScreenRefactored() {
   };
 
   const handleLoadMore = () => {
-    console.log('➕ Loading more suggestions...');
+    // console.log('➕ Loading more suggestions...');
+    // Force reset the loading state before calling loadSuggestions
+    if (requestInProgress.current) {
+      // console.log('🚨 Forcing reset of requestInProgress flag');
+      
+      // Cancel any ongoing requests
+      if (abortController.current) {
+        abortController.current.abort();
+        abortController.current = null;
+      }
+      
+      requestInProgress.current = false;
+    }
+    if (loadingState === 'loading') {
+      // console.log('🚨 Forcing reset of loading state');
+      setLoadingState('idle');
+      setLoadingProgress(0);
+      setIsTransitioning(false);
+    }
     loadSuggestions();
   };
 
   // Enhanced render content with improved transitions
   const renderContent = () => {
     const contentState = getContentState();
-    console.log('🎨 Rendering content for state:', contentState);
+    // Removed console logging for performance
+    // console.log('🎨 Rendering content for state:', contentState);
 
     // Choose appropriate transition variants based on state
     const getTransitionVariants = () => {
@@ -473,13 +624,12 @@ export function QuickDecisionScreenRefactored() {
                       suggestion={getCurrentSuggestion()!}
                       onVote={handleVote}
                       onSave={handleSave}
-                      onLoadMore={handleLoadMore}
                     />
                   </motion.div>
                 );
               } else {
                 // Fallback - this shouldn't happen with our improved logic
-                console.log('⚠️ Suggestions state but no current suggestion, showing empty state');
+                // console.log('⚠️ Suggestions state but no current suggestion, showing empty state');
                 return <EmptyState onLoad={handleLoadMore} />;
               }
             
@@ -497,7 +647,7 @@ export function QuickDecisionScreenRefactored() {
             
             default:
               // Fallback
-              console.log('⚠️ Unknown content state:', contentState);
+              // console.log('⚠️ Unknown content state:', contentState);
               return <StartScreen onStart={handleStart} />;
           }
         })()}
@@ -511,7 +661,10 @@ export function QuickDecisionScreenRefactored() {
       initial="initial"
       animate="animate"
       exit="exit"
-      className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50"
+      className="min-h-screen"
+      style={{ 
+        backgroundColor: '#FEFCF8'
+      }}
     >
       {/* Header */}
       <Header 

@@ -74,7 +74,7 @@ export const useTimer = (
           }
           return prev - 1;
         });
-      }, 1000);
+      }, 2000); // Reduced from 1000ms to 2000ms (2 seconds) for better performance
     }
 
     return () => {

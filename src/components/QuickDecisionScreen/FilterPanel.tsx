@@ -29,17 +29,17 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
         >
           <div className="p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Filter Options</h2>
+              <h2 className="text-xl font-bold" style={{ color: '#4A3B5C' }}>Filter Options</h2>
               <button
                 onClick={onClose}
                 className="p-2 rounded-full hover:bg-gray-100 transition-colors"
               >
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="w-5 h-5" style={{ color: '#7D6B8A' }} />
               </button>
             </div>
             
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">Meal Type</h3>
+              <h3 className="text-lg font-semibold" style={{ color: '#7D6B8A' }}>Meal Type</h3>
               <div className="grid grid-cols-1 gap-2">
                 {filterOptions.map((option) => (
                   <button
@@ -48,9 +48,17 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                     className={cn(
                       "flex items-center gap-3 p-3 rounded-lg border-2 transition-all text-left",
                       selectedFilter === option.value
-                        ? "bg-primary/10 border-primary/30 text-primary"
-                        : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                        ? "bg-white border-gray-200 hover:bg-gray-50"
+                        : "bg-white border-gray-200 hover:bg-gray-50"
                     )}
+                    style={selectedFilter === option.value 
+                      ? { 
+                          backgroundColor: 'rgba(184, 169, 209, 0.1)', 
+                          borderColor: 'rgba(184, 169, 209, 0.3)', 
+                          color: '#B8A9D1' 
+                        }
+                      : { color: '#4A4A4A' }
+                    }
                   >
                     <div className="p-2 rounded-lg bg-gray-100">
                       {option.icon}
@@ -68,7 +76,11 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
               
               <button
                 onClick={onApplyFilters}
-                className="w-full bg-gradient-to-r from-primary to-orange-500 text-white py-3 rounded-xl font-medium hover:from-primary/90 hover:to-orange-500/90 transition-all"
+                className="w-full text-white py-3 rounded-xl font-medium transition-all"
+                style={{ 
+                  background: 'linear-gradient(to right, #B8A9D1, #7D6B8A)',
+                  boxShadow: '0 4px 6px -1px rgba(184, 169, 209, 0.3)'
+                }}
               >
                 Apply Filters
               </button>

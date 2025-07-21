@@ -1,11 +1,25 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  UtensilsCrossed, RefreshCw, Settings, Check, X,
-  DollarSign, MapPin, Heart, ChevronLeft, ChevronRight,
-  Utensils, Coffee, Soup, Cake, Apple, Play,
-  ThumbsUp, ThumbsDown, Sparkles, Star, Clock, Users,
-  AlertTriangle
+  Heart, 
+  ThumbsUp, 
+  ThumbsDown, 
+  UtensilsCrossed, 
+  Clock, 
+  Users, 
+  Check, 
+  AlertTriangle,
+  Sparkles,
+  Coffee,
+  Utensils,
+  Cake,
+  Apple,
+  Soup,
+  Settings,
+  RefreshCw,
+  Star,
+  X,
+  Bot
 } from 'lucide-react';
 import { useAppStore } from '../lib/store';
 import { supabase, fetchFilteredRecipes } from '../lib/supabase';
@@ -64,104 +78,185 @@ const filterOptions: FilterOption[] = [
   }
 ];
 
-// Simple Loading Component with Progress Bar
-const SimpleLoader: React.FC<{ progress: number }> = ({ progress }) => (
-  <div className="flex flex-col items-center justify-center py-12 space-y-6">
-    <motion.div
-      className="w-16 h-16 bg-gradient-to-br from-primary to-orange-500 rounded-full flex items-center justify-center"
-      animate={{ rotate: 360 }}
-      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-    >
-      <UtensilsCrossed className="w-8 h-8 text-white" />
-    </motion.div>
-    
-    <div className="w-full max-w-md space-y-3">
-      <p className="text-lg font-medium text-gray-700 text-center">
-        Finding delicious options...
-      </p>
+// Simple Loading Component with Progress Bar - Game Style
+const SimpleLoader: React.FC<{ progress: number }> = ({ progress }) => {
+  // Define the processing steps with their progress ranges
+  const steps = [
+    { range: [0, 30], text: 'Analyzing your taste preferences...', icon: Sparkles },
+    { range: [30, 60], text: 'Searching through recipe database...', icon: UtensilsCrossed },
+    { range: [60, 75], text: 'Filtering recipes for your dietary needs...', icon: Clock },
+    { range: [75, 90], text: 'Fetching personalized recipes...', icon: Users },
+    { range: [90, 100], text: 'Preparing suggestions for you...', icon: Sparkles }
+  ];
+
+  // Get the current active step based on progress
+  const getCurrentStep = () => {
+    return steps.find(step => progress >= step.range[0] && progress < step.range[1]) || 
+           (progress >= 100 ? steps[steps.length - 1] : steps[0]);
+  };
+
+  const currentStep = getCurrentStep();
+
+  return (
+    <div className="flex flex-col items-center justify-center py-12 space-y-6 max-w-md mx-auto">
+      <motion.div
+        className="w-16 h-16 bg-gradient-to-br from-primary to-orange-500 rounded-full flex items-center justify-center"
+        animate={{ rotate: 360 }}
+        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+      >
+        <UtensilsCrossed className="w-8 h-8 text-white" />
+      </motion.div>
       
-      {/* Progress Bar Container */}
-      <div className="relative w-full h-3 bg-gray-200 rounded-full overflow-hidden">
-        {/* Background shimmer effect */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse" />
+      <div className="w-full space-y-6">
+        <p className="text-lg font-medium text-gray-700 text-center">
+          Finding delicious options...
+        </p>
         
-        {/* Progress Bar */}
-        <motion.div
-          className="h-full bg-gradient-to-r from-primary to-orange-500 rounded-full relative overflow-hidden"
-          initial={{ width: 0 }}
-          animate={{ width: `${progress}%` }}
-          transition={{ 
-            duration: 0.5, 
-            ease: "easeOut",
-            type: "spring",
-            stiffness: 100
-          }}
-        >
-          {/* Shimmer effect on progress bar */}
-          <div 
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-            style={{
-              backgroundSize: '200% 100%',
-              animation: 'shimmer 2s ease-in-out infinite'
-            }}
-          />
+        {/* Progress Bar Container */}
+        <div className="relative w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+          {/* Background shimmer effect */}
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse" />
           
-          {/* Completion glow effect */}
-          {progress === 100 && (
-            <motion.div
-              className="absolute inset-0 bg-gradient-to-r from-primary to-orange-500 rounded-full"
-              initial={{ opacity: 1, scale: 1 }}
-              animate={{ 
-                opacity: [1, 0.7, 1],
-                scale: [1, 1.05, 1]
-              }}
-              transition={{ 
-                duration: 0.6,
-                repeat: 2,
-                ease: "easeInOut"
+          {/* Progress Bar */}
+          <motion.div
+            className="h-full bg-gradient-to-r from-primary to-orange-500 rounded-full relative overflow-hidden"
+            initial={{ width: 0 }}
+            animate={{ width: `${progress}%` }}
+            transition={{ 
+              duration: 0.5, 
+              ease: "easeOut",
+              type: "spring",
+              stiffness: 100
+            }}
+          >
+            {/* Shimmer effect on progress bar */}
+            <div 
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+              style={{
+                backgroundSize: '200% 100%',
+                animation: 'shimmer 2s ease-in-out infinite'
               }}
             />
-          )}
-        </motion.div>
-      </div>
-      
-      {/* Progress Text */}
-      <div className="flex justify-between items-center text-sm text-gray-500">
-        <span>Progress</span>
-        <motion.span
-          className="font-medium"
-          animate={{ 
-            color: progress === 100 ? "#059669" : "#6B7280"
-          }}
-          transition={{ duration: 0.3 }}
-        >
-          {progress}%
-        </motion.span>
-      </div>
-      
-      {/* Completion Message */}
-      {progress === 100 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="text-center"
-        >
-          <div className="flex items-center justify-center gap-2 text-green-600">
+            
+            {/* Completion glow effect */}
+            {progress === 100 && (
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-r from-primary to-orange-500 rounded-full"
+                initial={{ opacity: 1, scale: 1 }}
+                animate={{ 
+                  opacity: [1, 0.7, 1],
+                  scale: [1, 1.05, 1]
+                }}
+                transition={{ 
+                  duration: 0.6,
+                  repeat: 2,
+                  ease: "easeInOut"
+                }}
+              />
+            )}
+          </motion.div>
+        </div>
+        
+        {/* Progress Text */}
+        <div className="flex justify-between items-center text-sm text-gray-500">
+          <span>Progress</span>
+          <motion.span
+            className="font-medium"
+            animate={{ 
+              color: progress === 100 ? "#059669" : "#6B7280"
+            }}
+            transition={{ duration: 0.3 }}
+          >
+            {progress}%
+          </motion.span>
+        </div>
+
+        {/* Game-style Processing Step Display */}
+        <div className="text-center min-h-[80px] flex items-center justify-center">
+          <motion.div
+            key={currentStep.text} // This ensures re-mount when step changes
+            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.9 }}
+            transition={{ 
+              duration: 0.5,
+              ease: "easeOut"
+            }}
+            className="flex items-center space-x-3 bg-white/80 backdrop-blur-sm rounded-lg px-6 py-4 shadow-md border border-gray-100"
+          >
+            {/* Animated Icon */}
             <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+              animate={{ 
+                scale: [1, 1.1, 1],
+                rotate: [0, 5, -5, 0]
+              }}
+              transition={{ 
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+              className="w-8 h-8 bg-gradient-to-br from-primary to-orange-500 rounded-full flex items-center justify-center"
             >
-              <Check className="w-5 h-5" />
+              <currentStep.icon className="w-4 h-4 text-white" />
             </motion.div>
-            <span className="font-medium">Recipes loaded successfully!</span>
-          </div>
-        </motion.div>
-      )}
+
+            {/* Processing Text with Typing Effect */}
+            <motion.div className="text-left">
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="text-sm font-medium text-gray-700"
+              >
+                {currentStep.text}
+              </motion.p>
+              
+              {/* Animated dots */}
+              <motion.div className="flex space-x-1 mt-1">
+                {[0, 1, 2].map((i) => (
+                  <motion.div
+                    key={i}
+                    className="w-1 h-1 bg-primary rounded-full"
+                    animate={{
+                      scale: [1, 1.5, 1],
+                      opacity: [0.3, 1, 0.3]
+                    }}
+                    transition={{
+                      duration: 1.2,
+                      repeat: Infinity,
+                      delay: i * 0.2
+                    }}
+                  />
+                ))}
+              </motion.div>
+            </motion.div>
+          </motion.div>
+        </div>
+        
+        {/* Completion Message */}
+        {progress === 100 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-center"
+          >
+            <div className="flex items-center justify-center gap-2 text-green-600">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+              >
+                <Check className="w-5 h-5" />
+              </motion.div>
+              <span className="font-medium">Recipes loaded successfully!</span>
+            </div>
+          </motion.div>
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // Suggestion Card Component
 interface SuggestionCardProps {
@@ -178,6 +273,29 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
   const [dragX, setDragX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [lastTap, setLastTap] = useState(0);
+
+  // Get mood tag colors based on their descriptors
+  const getMoodTagColors = (mood: string) => {
+    switch (mood.toLowerCase()) {
+      case 'comfort_food':
+      case 'comfort food':
+        return 'bg-orange-100 text-orange-700 border-orange-200';
+      case 'healthy':
+        return 'bg-green-100 text-green-700 border-green-200';
+      case 'indulgent':
+        return 'bg-purple-100 text-purple-700 border-purple-200';
+      case 'light':
+        return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'hearty':
+        return 'bg-red-100 text-red-700 border-red-200';
+      case 'exotic':
+        return 'bg-pink-100 text-pink-700 border-pink-200';
+      case 'familiar':
+        return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      default:
+        return 'bg-gray-100 text-gray-700 border-gray-200';
+    }
+  };
   
   const getDifficultyStars = (difficulty: number | null) => {
     if (!difficulty) return null;
@@ -295,14 +413,7 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
         </>
       )}
 
-      {/* Double-tap instruction overlay */}
-      {!suggestion.userVote && !isDragging && (
-        <div className="absolute top-4 right-4 z-10">
-          <div className="bg-black/70 text-white text-xs px-2 py-1 rounded-lg backdrop-blur-sm">
-            Double-tap or swipe
-          </div>
-        </div>
-      )}
+
 
       {/* Image Section */}
       <div className="relative aspect-[4/3]">
@@ -399,7 +510,7 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
           ))}
           {/* Mood tags */}
           {suggestion.recipe_mood_tags?.slice(0, 2).map(mood => (
-            <span key={mood} className="bg-purple-100 text-purple-700 text-xs px-2 py-1 rounded-full">
+            <span key={mood} className={`${getMoodTagColors(mood)} text-xs px-2 py-1 rounded-full border`}>
               {mood.replace('_', ' ')}
             </span>
           ))}
@@ -461,51 +572,219 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
 export function QuickDecisionScreen() {
   const { auth: { user } } = useAppStore();
   
-  // Core state - keep minimal
-  const [suggestions, setSuggestions] = useState<SuggestionWithVote[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isStarted, setIsStarted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
-  const [isStarted, setIsStarted] = useState(false);
+  const [suggestions, setSuggestions] = useState<SuggestionWithVote[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<MealType>('all');
   
-  // Prevent multiple requests
+  // Prevent multiple requests and add abort controller
   const requestInProgress = useRef(false);
+  const abortController = useRef<AbortController | null>(null);
+
+  // Enhanced component initialization and cleanup for navigation reliability
+  useEffect(() => {
+    // Reduced console logging for better performance
+    // console.log('🎯 QuickDecisionScreen (simple) component mounted - initializing...');
+    
+    // Reset all state on mount
+    setIsStarted(false);
+    setIsLoading(false);
+    setLoadingProgress(0);
+    setSuggestions([]);
+    setCurrentIndex(0);
+    setError(null);
+    setShowFilters(false);
+    requestInProgress.current = false;
+    
+    // Cancel any existing requests
+    if (abortController.current) {
+      abortController.current.abort();
+      abortController.current = null;
+    }
+    
+    // Enhanced visibility change handler
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Reduced console logging for better performance
+        // console.log('👁️ Page became visible - performing comprehensive state check...');
+        
+        // More comprehensive stuck state detection
+        const isStuckInLoading = requestInProgress.current || isLoading;
+        const hasStuckProgress = loadingProgress > 0 && loadingProgress < 100 && !isLoading;
+        
+        if (isStuckInLoading || hasStuckProgress) {
+          // Reduced console logging for better performance
+          // console.log('🚨 Found stuck state after page visibility change - performing full reset');
+          
+          // Force complete reset
+          if (abortController.current) {
+            abortController.current.abort();
+            abortController.current = null;
+          }
+          
+          requestInProgress.current = false;
+          setIsLoading(false);
+          setLoadingProgress(0);
+          setError(null);
+          
+          // console.log('✅ Comprehensive state reset complete');
+        }
+      } else {
+        // Reduced console logging for better performance
+        // console.log('👁️ Page became hidden - preparing for potential cleanup...');
+        
+        if (requestInProgress.current) {
+          // console.log('⚠️ Page hidden during loading - request will be cleaned up on return');
+        }
+      }
+    };
+
+    // Handle page navigation cleanup
+    const handleBeforeUnload = () => {
+      // console.log('🚪 Page is about to unload - cleaning up requests...');
+      
+      if (abortController.current) {
+        abortController.current.abort();
+        abortController.current = null;
+      }
+      
+      requestInProgress.current = false;
+    };
+
+    // Handle focus events for additional safety
+    const handleFocus = () => {
+      // console.log('🎯 Window focused - checking for orphaned states...');
+      
+      setTimeout(() => {
+        if (requestInProgress.current && !isLoading) {
+          // console.log('🚨 Found orphaned requestInProgress flag - clearing');
+          requestInProgress.current = false;
+        }
+        
+        if (loadingProgress > 0 && !isLoading) {
+          // console.log('🚨 Found orphaned loading progress - clearing');
+          setLoadingProgress(0);
+        }
+      }, 100);
+    };
+    
+    // Add all event listeners
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      // Remove all event listeners
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('focus', handleFocus);
+      
+      // Cancel any ongoing requests
+      if (abortController.current) {
+        abortController.current.abort();
+        abortController.current = null;
+      }
+      
+      requestInProgress.current = false;
+      setIsLoading(false);
+      setLoadingProgress(0);
+      
+      // Clear global window state to prevent interference with other screens
+      if (window && window.__tabletalk_state) {
+        delete window.__tabletalk_state;
+      }
+    };
+  }, []);
 
   // Load suggestions function - with real progress tracking
   const loadSuggestions = async () => {
+    // Reduced console logging for better performance
+    // console.log('🚀 loadSuggestions called (simple component)');
+    
+    // Force clear any stuck state before starting
     if (requestInProgress.current) {
-      console.log('Request already in progress, skipping');
-        return;
+      // Cancel any ongoing requests
+      if (abortController.current) {
+        abortController.current.abort();
+        abortController.current = null;
       }
       
+      requestInProgress.current = false;
+    }
+    
+    if (isLoading) {
+      setIsLoading(false);
+      setLoadingProgress(0);
+    }
+    
+    // Double-check after forced reset
+    if (requestInProgress.current) {
+      return;
+    }
+    
+    // console.log('✅ State validated, proceeding with new request...');
+    
+    // Create new abort controller for this request
+    abortController.current = new AbortController();
+    
     requestInProgress.current = true;
     setIsLoading(true);
     setError(null);
     setLoadingProgress(0);
     
-    try {
-      console.log('Loading suggestions for filter:', selectedFilter);
+    // Add timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      // Cancel the request
+      if (abortController.current) {
+        abortController.current.abort();
+        abortController.current = null;
+      }
       
-      // Start progress immediately
-      setLoadingProgress(10);
+      setError('Loading timed out. Please try again.');
+      setIsLoading(false);
+      setLoadingProgress(0);
+      requestInProgress.current = false;
+    }, 10000); // Reduced to 10 second timeout
+    
+    try {
+      // console.log('Loading suggestions for filter:', selectedFilter);
+      
+      // Stage 1: Start progress immediately
+      setLoadingProgress(25);
       
       const mealType = selectedFilter === 'all' ? null : selectedFilter;
       
-      // Update progress during API call
-      setLoadingProgress(30);
+      // Stage 2: Preparing API call
+      setLoadingProgress(50);
       
-      const recipes = await fetchFilteredRecipes(mealType, user?.id || null, 5);
+      // Stage 3: Making API call
+      setLoadingProgress(75);
       
-      // API call completed
-      setLoadingProgress(80);
+      // Check if request was aborted before making API call
+      if (abortController.current?.signal.aborted) {
+        // console.log('🚫 Request was aborted before API call');
+        return;
+      }
       
-      console.log('Fetched recipes:', recipes.length, recipes);
+      const recipes = await fetchFilteredRecipes(mealType, user?.id || null, 5, abortController.current?.signal);
+      
+      // Check if request was aborted after API call
+      if (abortController.current?.signal.aborted) {
+        // console.log('🚫 Request was aborted after API call');
+        return;
+      }
+      
+      // API call completed - final stage
+      setLoadingProgress(100);
+      
+      // console.log('Fetched recipes:', recipes.length, recipes);
       
       if (recipes.length === 0) {
-        console.log('No recipes found, showing error');
+        // console.log('No recipes found, showing error');
         setError('No recipes found. Try adjusting your filters.');
         setSuggestions([]);
         setIsLoading(false);
@@ -514,46 +793,55 @@ export function QuickDecisionScreen() {
         return;
       }
       
-      // Process data
-      setLoadingProgress(95);
-      
       const suggestionsWithVotes: SuggestionWithVote[] = recipes.map(recipe => ({
         ...recipe,
         userVote: null,
         votedAt: undefined
       }));
       
-      console.log('Setting suggestions:', suggestionsWithVotes);
+      // console.log('Setting suggestions:', suggestionsWithVotes);
       setSuggestions(suggestionsWithVotes);
       setCurrentIndex(0);
       
-      // Complete progress and finish loading
+      // Complete loading with final progress
       setLoadingProgress(100);
+      // console.log('📊 Progress: 100% - Complete!');
       
       // Brief delay to show completion, then finish
       setTimeout(() => {
-        console.log('Finishing loading, showing suggestions');
+        // console.log('Finishing loading, showing suggestions');
         setIsLoading(false);
         setLoadingProgress(0);
-      }, 200);
+      }, 300);
       
     } catch (err) {
-      console.error('Error loading suggestions:', err);
+      // console.error('Error loading suggestions:', err);
+      
+      // Clear timeout on error
+      clearTimeout(timeoutId);
+      
+      // Check if it was an abort error (user navigated away)
+      if (err instanceof Error && (err.name === 'AbortError' || err.message === 'Request was aborted')) {
+        // console.log('🚫 Request was aborted by user navigation');
+        return; // Don't show error for aborted requests
+      }
+      
       setError('Failed to load suggestions. Please try again.');
       setSuggestions([]);
       setIsLoading(false);
       setLoadingProgress(0);
     } finally {
+      // Clear timeout since we're done
+      clearTimeout(timeoutId);
+      
+      // Clean up abort controller
+      if (abortController.current) {
+        abortController.current = null;
+      }
+      
       requestInProgress.current = false;
     }
   };
-
-  // Cleanup on unmount
-  React.useEffect(() => {
-    return () => {
-      // No intervals to cleanup anymore
-    };
-  }, []);
 
   // Event handlers - simplified
   const handleStart = () => {
@@ -578,6 +866,27 @@ export function QuickDecisionScreen() {
         setCurrentIndex(currentIndex + 1);
       } else {
         // Load more when we reach the end
+        // console.log('🔄 End of suggestions, loading more...');
+        
+        // Force clear any stuck state before loading more
+        if (requestInProgress.current) {
+          // console.log('🚨 Clearing stuck requestInProgress flag');
+          
+          // Cancel any ongoing requests
+          if (abortController.current) {
+            abortController.current.abort();
+            abortController.current = null;
+          }
+          
+          requestInProgress.current = false;
+        }
+        
+        if (isLoading) {
+          // console.log('🚨 Resetting stuck loading state');
+          setIsLoading(false);
+          setLoadingProgress(0);
+        }
+        
         loadSuggestions();
       }
     }, 1000);
@@ -590,15 +899,24 @@ export function QuickDecisionScreen() {
     
     try {
       if (suggestion.is_saved) {
-        await supabase.rpc('remove_recipe_from_favorites', { 
-          p_user_id: user.id, 
-          p_recipe_id: suggestion.recipe_id 
-        });
-    } else {
-        await supabase.rpc('save_recipe_to_favorites', { 
-          p_user_id: user.id, 
-          p_recipe_id: suggestion.recipe_id 
-        });
+        // Remove from saved_suggestions
+        const { error } = await supabase
+          .from('saved_suggestions')
+          .delete()
+          .eq('profile_id', user.id)
+          .eq('recipe_id', suggestion.recipe_id);
+        
+        if (error) throw error;
+      } else {
+        // Add to saved_suggestions
+        const { error } = await supabase
+          .from('saved_suggestions')
+          .insert({
+            profile_id: user.id,
+            recipe_id: suggestion.recipe_id
+          });
+        
+        if (error) throw error;
       }
       
       const newSuggestions = [...suggestions];
@@ -609,7 +927,7 @@ export function QuickDecisionScreen() {
       setSuggestions(newSuggestions);
       
     } catch (err) {
-      console.error('Error saving suggestion:', err);
+      // console.error('Error saving suggestion:', err);
     }
   };
 
@@ -628,7 +946,8 @@ export function QuickDecisionScreen() {
 
   return (
       <motion.div 
-        className="min-h-screen bg-gradient-to-br from-[#FFFDF9] via-[#FAF8F5] to-[#F3ECE3]"
+        className="min-h-screen"
+        style={{ backgroundColor: '#FEFCF8' }}
         initial="initial"
       animate="enter"
         exit="exit"
@@ -664,8 +983,8 @@ export function QuickDecisionScreen() {
         <div className="bg-white rounded-2xl shadow-xl p-8">
           {/* Header Section */}
           <div className="text-center mb-8">
-            <div className="bg-primary/10 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-              <Sparkles className="w-8 h-8 text-primary" />
+            <div className="bg-indigo-100 text-indigo-500 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-sm ring-1 ring-indigo-200/50">
+              <Bot className="w-8 h-8" />
           </div>
 
             <h2 className="text-3xl font-bold text-gray-900 mb-2">
@@ -692,9 +1011,8 @@ export function QuickDecisionScreen() {
                 
                 <button
                   onClick={handleStart}
-                  className="bg-gradient-to-r from-primary to-orange-500 text-white py-4 px-8 rounded-xl font-semibold text-lg hover:from-primary/90 hover:to-orange-500/90 transition-all shadow-lg flex items-center gap-3 mx-auto"
+                  className="bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-semibold py-4 px-8 rounded-xl text-lg transition-shadow duration-200 shadow-lg mx-auto hover:shadow-cyan-300/40"
                 >
-                  <Play className="w-6 h-6" />
                   Start Smart Suggestions
                 </button>
                 </div>

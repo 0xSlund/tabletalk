@@ -1,3 +1,4 @@
+/* Optimized Google Fonts import with display=swap for better performance */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=ClashDisplay:wght@400;500;600&display=swap');
 
 @tailwind base;
@@ -79,7 +80,8 @@
   }
   
   body {
-    @apply bg-gradient-to-br from-background-peach to-background-cream text-text-body text-base;
+    background-color: #FEFCF8;
+    @apply text-text-body text-base;
     transition: background-color 0.3s ease, color 0.3s ease;
     overflow-x: hidden !important;
   }

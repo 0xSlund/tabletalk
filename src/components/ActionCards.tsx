@@ -1,12 +1,61 @@
 import React, { useRef, RefObject } from 'react';
 import { motion } from 'framer-motion';
-import { Users, UserPlus, Bot, Globe, Star, ArrowRight, MessageSquare, Brain, Sparkles } from 'lucide-react';
+import { Users, UserPlus, Bot, Globe, Star, ArrowRight, MessageSquare, Brain, Sparkles, ChefHat, Compass, CircleDot } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
 
 interface ActionCardsProps {
   darkMode?: boolean;
 }
+
+// Simple Robot Icon - matches the style of other Lucide icons
+const RobotHeadIcon = ({ className }: { className?: string }) => (
+  <svg 
+    className={className} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    {/* Robot head */}
+    <rect x="6" y="6" width="12" height="10" rx="2" ry="2" stroke="currentColor" strokeWidth="2" fill="none"/>
+    
+    {/* Antenna */}
+    <path d="M12 6V4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <circle cx="12" cy="3" r="1" fill="currentColor"/>
+    
+    {/* Eyes */}
+    <circle cx="9" cy="10" r="1" fill="currentColor"/>
+    <circle cx="15" cy="10" r="1" fill="currentColor"/>
+    
+    {/* Mouth */}
+    <path d="M9 13h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    
+    {/* Body indicator */}
+    <path d="M8 16v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <path d="M12 16v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <path d="M16 16v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+  </svg>
+);
+
+// Custom User with Plus Icon for joining
+const UserPlusIcon = ({ className }: { className?: string }) => (
+  <svg 
+    className={className} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    {/* User head */}
+    <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="2" fill="none"/>
+    
+    {/* User body */}
+    <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" stroke="currentColor" strokeWidth="2" fill="none"/>
+    
+    {/* Plus sign */}
+    <line x1="19" y1="8" x2="19" y2="14" stroke="currentColor" strokeWidth="2"/>
+    <line x1="16" y1="11" x2="22" y2="11" stroke="currentColor" strokeWidth="2"/>
+  </svg>
+);
 
 // Custom component for Create a Room with stacking message effect
 const CreateRoomIcon = ({ isHovered }: { isHovered: boolean }) => {
@@ -53,36 +102,10 @@ const CreateRoomIcon = ({ isHovered }: { isHovered: boolean }) => {
     }
   };
 
-  // Bottom left message - tilted left (mirrored position)
-  const messageVariants3 = {
-    initial: { 
-      opacity: 0, 
-      y: 0,
-      x: 0,
-      scale: 0.7,
-      rotate: 0,
-    },
-    animate: { 
-      opacity: [0, 1, 1, 0],
-      y: [0, 2, 4, 6],
-      x: [0, -3, -4, -5],
-      scale: [0.7, 1, 1, 0.9],
-      rotate: [0, -8, -10, -12],
-      transition: {
-        duration: 1.4,
-        times: [0, 0.3, 0.7, 1],
-        ease: "easeOut",
-        repeat: Infinity,
-        repeatType: "loop" as const,
-        delay: 1.0
-      }
-    }
-  };
-
   return (
     <div className="relative w-6 h-6">
-      {/* Static group icon - using white color to be visible */}
-      <Users className="w-6 h-6 text-white" />
+      {/* Static group icon - using soft green color for growth and hosting energy */}
+      <Users className="w-6 h-6 text-green-600" />
       
       {/* Animated message icons that appear above the users to simulate conversation */}
       {isHovered && (
@@ -94,7 +117,7 @@ const CreateRoomIcon = ({ isHovered }: { isHovered: boolean }) => {
             initial="initial"
             animate="animate"
           >
-            <MessageSquare className="w-3 h-3 text-emerald-400 fill-emerald-100" />
+            <MessageSquare className="w-3 h-3 text-green-500 fill-green-100" />
           </motion.div>
           
           {/* Second message bubble - coming from right user */}
@@ -104,7 +127,7 @@ const CreateRoomIcon = ({ isHovered }: { isHovered: boolean }) => {
             initial="initial"
             animate="animate"
           >
-            <MessageSquare className="w-3.5 h-3.5 text-emerald-300 fill-emerald-50" />
+            <MessageSquare className="w-3.5 h-3.5 text-green-400 fill-green-50" />
           </motion.div>
         </>
       )}
@@ -125,7 +148,7 @@ export function ActionCards({ darkMode = false }: ActionCardsProps) {
     hover: { 
       scale: 1.02,
       y: -8,
-      boxShadow: "0 32px 64px -12px rgba(52, 211, 153, 0.3), 0 0 0 2px rgba(52, 211, 153, 0.2)",
+      boxShadow: "0 32px 64px -12px rgba(34, 197, 94, 0.3), 0 0 0 2px rgba(34, 197, 94, 0.2)",
       transition: {
         type: "spring",
         stiffness: 300,
@@ -144,8 +167,8 @@ export function ActionCards({ darkMode = false }: ActionCardsProps) {
     }
   };
 
-  // Standard card animation variants
-  const getStandardCardVariants = (isDark: boolean) => ({
+  // Standard card animation variants with themed glow shadows for each card
+  const getStandardCardVariants = (isDark: boolean, cardTitle: string) => ({
     initial: { 
       scale: 1,
       y: 0,
@@ -153,9 +176,15 @@ export function ActionCards({ darkMode = false }: ActionCardsProps) {
     hover: { 
       scale: 1.05,
       y: -6,
-      boxShadow: isDark 
-        ? "0 25px 50px -12px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1)"
-        : "0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.1)",
+      boxShadow: cardTitle === "Join a Room" 
+        ? "0 25px 50px -12px rgba(59, 130, 246, 0.25), 0 0 20px rgba(59, 130, 246, 0.15), 0 0 0 1px rgba(59, 130, 246, 0.1)"
+        : cardTitle === "AI Food Assistant" 
+          ? "0 25px 50px -12px rgba(168, 85, 247, 0.25), 0 0 20px rgba(168, 85, 247, 0.15), 0 0 0 1px rgba(168, 85, 247, 0.1)"
+          : cardTitle === "Explore Cuisines"
+            ? "0 25px 50px -12px rgba(249, 115, 22, 0.25), 0 0 20px rgba(249, 115, 22, 0.15), 0 0 0 1px rgba(249, 115, 22, 0.1)"
+            : isDark 
+              ? "0 25px 50px -12px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1)"
+              : "0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.1)",
       transition: {
         type: "spring",
         stiffness: 400,
@@ -191,7 +220,7 @@ export function ActionCards({ darkMode = false }: ActionCardsProps) {
           }
         };
 
-            case "Join a Room":
+      case "Join a Room":
         // Continuous glow bounce animation when inactive, enhanced glow on hover
         return {
           initial: { 
@@ -206,7 +235,7 @@ export function ActionCards({ darkMode = false }: ActionCardsProps) {
               times: [0, 0.5, 1],
               ease: "easeInOut",
               repeat: Infinity,
-              repeatType: "loop"
+              repeatType: "loop" as const
             }
           },
           hover: { 
@@ -221,7 +250,7 @@ export function ActionCards({ darkMode = false }: ActionCardsProps) {
               times: [0, 0.5, 1],
               ease: "easeInOut",
               repeat: Infinity,
-              repeatType: "loop"
+              repeatType: "loop" as const
             }
           },
           exit: {
@@ -236,45 +265,45 @@ export function ActionCards({ darkMode = false }: ActionCardsProps) {
               times: [0, 0.5, 1],
               ease: "easeInOut",
               repeat: Infinity,
-              repeatType: "loop"
+              repeatType: "loop" as const
             }
           }
         };
       
-                  case "AI Food Assistant":
-        // AI processing animation - pulsing with digital glow
+      case "AI Food Assistant":
+        // AI processing animation with purple glow and pulse effect
         return {
           initial: { 
             scale: 1, 
             rotate: 0, 
-            filter: "brightness(1) drop-shadow(0 0 0px rgba(59, 130, 246, 0))",
+            filter: "brightness(1) drop-shadow(0 0 0px rgba(168, 85, 247, 0))",
             transformOrigin: "center"
           },
           hover: { 
             scale: [1, 1.08, 1.04, 1.12, 1.06, 1.15, 1.08, 1],
             rotate: [0, 3, -2, 5, -3, 2, -1, 0],
             filter: [
-              "brightness(1) drop-shadow(0 0 0px rgba(59, 130, 246, 0))",
-              "brightness(1.1) drop-shadow(0 0 4px rgba(59, 130, 246, 0.4))",
-              "brightness(1.05) drop-shadow(0 0 2px rgba(59, 130, 246, 0.2))",
-              "brightness(1.15) drop-shadow(0 0 6px rgba(59, 130, 246, 0.6))",
-              "brightness(1.08) drop-shadow(0 0 3px rgba(59, 130, 246, 0.3))",
-              "brightness(1.2) drop-shadow(0 0 8px rgba(59, 130, 246, 0.8))",
-              "brightness(1.1) drop-shadow(0 0 4px rgba(59, 130, 246, 0.4))",
-              "brightness(1) drop-shadow(0 0 0px rgba(59, 130, 246, 0))"
+              "brightness(1) drop-shadow(0 0 0px rgba(168, 85, 247, 0))",
+              "brightness(1.1) drop-shadow(0 0 8px rgba(168, 85, 247, 0.6))",
+              "brightness(1.05) drop-shadow(0 0 4px rgba(168, 85, 247, 0.4))",
+              "brightness(1.15) drop-shadow(0 0 12px rgba(168, 85, 247, 0.8))",
+              "brightness(1.08) drop-shadow(0 0 6px rgba(168, 85, 247, 0.5))",
+              "brightness(1.2) drop-shadow(0 0 16px rgba(168, 85, 247, 1))",
+              "brightness(1.1) drop-shadow(0 0 8px rgba(168, 85, 247, 0.6))",
+              "brightness(1) drop-shadow(0 0 0px rgba(168, 85, 247, 0))"
             ],
             transition: { 
               duration: 2.0,
               times: [0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1],
-              ease: "easeInOut", // Smooth AI processing rhythm
+              ease: "easeInOut",
               repeat: Infinity,
-              repeatType: "loop"
+              repeatType: "loop" as const
             }
           },
           exit: {
             scale: 1,
             rotate: 0,
-            filter: "brightness(1) drop-shadow(0 0 0px rgba(59, 130, 246, 0))",
+            filter: "brightness(1) drop-shadow(0 0 0px rgba(168, 85, 247, 0))",
             transition: {
               duration: 0.4,
               ease: "easeOut"
@@ -283,7 +312,7 @@ export function ActionCards({ darkMode = false }: ActionCardsProps) {
         };
       
       case "Explore Cuisines":
-        // True 3D globe with perspective and multi-axis rotation
+        // Subtle warm-toned animation emphasizing adventure and cultural discovery
         return {
           initial: { 
             scale: 1, 
@@ -291,35 +320,50 @@ export function ActionCards({ darkMode = false }: ActionCardsProps) {
             rotateX: 0,
             rotateZ: 0,
             perspective: 1000,
-            transformStyle: "preserve-3d"
+            transformStyle: "preserve-3d" as const,
+            filter: "brightness(1) drop-shadow(0 0 0px rgba(249, 115, 22, 0))"
           },
           hover: { 
-            scale: 1.1,
-            rotateY: [0, 360], // Main rotation like Earth spinning
-            rotateX: [0, 15, -10, 5, 0], // North-South wobble
-            rotateZ: [0, -3, 3, -2, 0], // Slight axis tilt
+            scale: 1.08,
+            rotateY: [0, 180], // Gentle flip like turning pages of a world cookbook
+            rotateX: [0, 8, -4, 2, 0], // Subtle tilt like examining spices
+            rotateZ: [0, -2, 2, -1, 0], // Gentle sway
+            filter: [
+              "brightness(1) drop-shadow(0 0 0px rgba(249, 115, 22, 0))",
+              "brightness(1.05) drop-shadow(0 0 4px rgba(249, 115, 22, 0.3))",
+              "brightness(1.08) drop-shadow(0 0 8px rgba(249, 115, 22, 0.4))",
+              "brightness(1.05) drop-shadow(0 0 4px rgba(249, 115, 22, 0.3))",
+              "brightness(1) drop-shadow(0 0 0px rgba(249, 115, 22, 0))"
+            ],
             transition: { 
               scale: { 
                 duration: 0.4, 
                 ease: "easeOut" 
               },
               rotateY: { 
-                duration: 4, 
-                ease: "linear",
-                repeat: Infinity,
-                repeatType: "loop"
-              },
-              rotateX: {
-                duration: 6,
+                duration: 3, 
                 ease: "easeInOut",
                 repeat: Infinity,
-                repeatType: "loop"
+                repeatType: "loop" as const
+              },
+              rotateX: {
+                duration: 4,
+                ease: "easeInOut",
+                repeat: Infinity,
+                repeatType: "loop" as const
               },
               rotateZ: {
-                duration: 8,
+                duration: 5,
                 ease: "easeInOut", 
                 repeat: Infinity,
-                repeatType: "loop"
+                repeatType: "loop" as const
+              },
+              filter: {
+                duration: 2,
+                times: [0, 0.25, 0.5, 0.75, 1],
+                ease: "easeInOut",
+                repeat: Infinity,
+                repeatType: "loop" as const
               }
             }
           },
@@ -328,6 +372,7 @@ export function ActionCards({ darkMode = false }: ActionCardsProps) {
             rotateY: 0,
             rotateX: 0,
             rotateZ: 0,
+            filter: "brightness(1) drop-shadow(0 0 0px rgba(249, 115, 22, 0))",
             transition: {
               duration: 0.5,
               ease: "easeOut"
@@ -336,7 +381,7 @@ export function ActionCards({ darkMode = false }: ActionCardsProps) {
         };
       
       default:
-        // Create a Room - Collaborative building animation
+        // Default animation
         return {
           initial: { 
             scale: 1, 
@@ -360,7 +405,7 @@ export function ActionCards({ darkMode = false }: ActionCardsProps) {
               times: [0, 0.25, 0.5, 0.75, 1],
               ease: "easeInOut",
               repeat: Infinity,
-              repeatType: "loop"
+              repeatType: "loop" as const
             }
           },
           exit: {
@@ -377,71 +422,74 @@ export function ActionCards({ darkMode = false }: ActionCardsProps) {
     }
   };
 
-  // Hero Create Room Card with energizing green gradient
+  // Hero Create Room Card with soft sage green colors
   const createRoomCard = {
     icon: Users,
     title: "Create a Room",
     subtitle: "Start a new voting session with friends",
     description: "Gather your friends and let everyone vote on where to eat. Perfect for group decisions!",
-    gradient: "bg-[#20C57D]",
+    gradient: "bg-gradient-to-br from-green-400 to-green-500", // Soft sage green (#A7C4A0 to #8FBC8F)
     textColor: "text-white",
-    iconBg: "bg-emerald-600",
-    iconColor: "text-white",
+    iconBg: "bg-green-100",
+    iconColor: "text-green-600",
     path: "/create",
     ariaLabel: "Create a new room",
     isPrimary: true,
     badge: "Recommended"
   };
 
-  // Secondary action cards
+  // Secondary action cards with updated 2025 color strategy
   const actionCards = [
     {
-      icon: UserPlus,
+      icon: UserPlusIcon, // User with plus sign for joining
       title: "Join a Room",
-      subtitle: "Use a code to hop into someone else's room",
-      gradient: "bg-gradient-to-br from-blue-50 via-sky-50 to-cyan-50",
-      borderGradient: "from-blue-500 via-sky-500 to-cyan-500",
-      iconColor: "text-blue-600",
-      iconBg: "bg-gradient-to-br from-blue-100 to-sky-100",
-      iconBgHover: "bg-gradient-to-br from-blue-200 to-sky-200",
-      titleColor: "bg-gradient-to-r from-blue-700 via-sky-700 to-cyan-700 bg-clip-text text-transparent",
+      subtitle: "Use a code or link to hop into someone else's room.",
+      gradient: "bg-gradient-to-br from-blue-50 via-blue-50 to-indigo-50",
+      borderGradient: "from-blue-400 via-blue-500 to-indigo-400",
+      iconColor: "text-blue-500",
+      iconBg: "bg-blue-100",
+      iconBgHover: "bg-blue-200",
+      titleColor: "text-blue-600",
       subtitleColor: "text-gray-600",
-      glowColor: "rgba(59, 130, 246, 0.2)",
+      glowColor: "rgba(168, 200, 225, 0.3)",
       path: "/join",
       ariaLabel: "Join an existing room",
-      isPrimary: false
+      isPrimary: false,
+      isCustomIcon: true
     },
     {
-      icon: Bot,
+      icon: Bot, // Bot icon used inside rooms
       title: "AI Food Assistant",
       subtitle: "Let AI analyze your preferences and suggest perfect meals!",
-      gradient: "bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50",
-      borderGradient: "from-blue-500 via-indigo-500 to-purple-500",
-      iconColor: "text-blue-600",
-      iconBg: "bg-gradient-to-br from-blue-100 to-indigo-100",
-      iconBgHover: "bg-gradient-to-br from-blue-200 to-indigo-200",
-      titleColor: "bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-700 bg-clip-text text-transparent",
+      gradient: "bg-gradient-to-br from-purple-50 via-purple-50 to-pink-50",
+      borderGradient: "from-purple-400 via-purple-500 to-pink-400",
+      iconColor: "text-purple-500",
+      iconBg: "bg-purple-100",
+      iconBgHover: "bg-purple-200",
+      titleColor: "text-purple-600",
       subtitleColor: "text-gray-600",
-      glowColor: "rgba(59, 130, 246, 0.2)",
+      glowColor: "rgba(200, 181, 224, 0.3)",
       path: "/ai-food-assistant",
       ariaLabel: "Get AI-powered food suggestions",
-      isPrimary: false
+      isPrimary: false,
+      isCustomIcon: false
     },
     {
-      icon: Globe,
+      icon: Globe, // Globe for world cuisines
       title: "Explore Cuisines",
-      subtitle: "Filter by cravings, distance, or budget",
-      gradient: "bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-50",
-      borderGradient: "from-violet-500 via-purple-500 to-indigo-500",
-      iconColor: "text-violet-600",
-      iconBg: "bg-gradient-to-br from-violet-100 to-purple-100",
-      iconBgHover: "bg-gradient-to-br from-violet-200 to-purple-200",
-      titleColor: "bg-gradient-to-r from-violet-700 via-purple-700 to-indigo-700 bg-clip-text text-transparent",
+      subtitle: "Discover global flavors and cultural dining experiences.",
+      gradient: "bg-gradient-to-br from-orange-50 via-orange-50 to-red-50",
+      borderGradient: "from-orange-400 via-orange-500 to-red-400",
+      iconColor: "text-orange-500",
+      iconBg: "bg-orange-100",
+      iconBgHover: "bg-orange-200",
+      titleColor: "text-orange-600",
       subtitleColor: "text-gray-600",
-      glowColor: "rgba(139, 92, 246, 0.2)",
+      glowColor: "rgba(244, 194, 161, 0.3)",
       path: "/explore",
-      ariaLabel: "Explore cuisine options",
-      isPrimary: false
+      ariaLabel: "Explore global cuisine options",
+      isPrimary: false,
+      isCustomIcon: false
     }
   ];
 
@@ -503,13 +551,11 @@ export function ActionCards({ darkMode = false }: ActionCardsProps) {
                 whileTap="tap"
                 onHoverStart={() => setHoveredCard("Create a Room")}
                 onHoverEnd={() => setHoveredCard(null)}
-                className={`relative ${createRoomCard.gradient} rounded-2xl p-6 sm:p-8 overflow-hidden shadow-2xl group cursor-pointer focus:ring-2 focus:ring-orange-500 focus:ring-offset-2`}
+                className={`relative ${createRoomCard.gradient} rounded-2xl p-6 sm:p-8 overflow-hidden shadow-2xl group cursor-pointer focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-shadow duration-200 hover:shadow-green-300/30`}
                 style={{
-                  boxShadow: `0 16px 64px -16px rgba(52, 211, 153, 0.4)`
+                  boxShadow: `0 16px 64px -16px rgba(34, 197, 94, 0.4)`
                 }}
               >
-
-                
                 {/* Floating badge */}
                 <motion.div
                   className="absolute top-4 right-4"
@@ -578,7 +624,7 @@ export function ActionCards({ darkMode = false }: ActionCardsProps) {
             variants={staggerContainer}
             initial="hidden"
             animate="visible"
-            className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto"
+            className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 max-w-6xl mx-auto"
           >
             {actionCards.map((card, index) => (
               <motion.div
@@ -587,15 +633,21 @@ export function ActionCards({ darkMode = false }: ActionCardsProps) {
               >
                 <Link to={card.path} className="block" aria-label={card.ariaLabel}>
                   <motion.div
-                    variants={getStandardCardVariants(darkMode)}
+                    variants={getStandardCardVariants(darkMode, card.title)}
                     whileHover="hover"
                     whileTap="tap"
                     onHoverStart={() => setHoveredCard(card.title)}
                     onHoverEnd={() => setHoveredCard(null)}
-                    className={`relative rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all focus:ring-2 focus:ring-offset-2 group h-full ${
-                      darkMode 
-                        ? 'bg-gray-800 border border-gray-700 focus:ring-gray-500' 
-                        : 'bg-white focus:ring-gray-300'
+                    className={`relative rounded-2xl p-4 sm:p-6 shadow-sm transition-all focus:ring-2 focus:ring-offset-2 group h-full ${
+                      card.title === "Join a Room"
+                        ? `transition-shadow duration-200 ${darkMode ? 'bg-gray-800 border border-gray-700 focus:ring-gray-500 hover:bg-gray-750 hover:shadow-xl hover:shadow-blue-500/20' : 'bg-white focus:ring-blue-300 hover:shadow-xl hover:shadow-blue-500/20'}`
+                        : card.title === "AI Food Assistant"
+                          ? `transition-shadow duration-200 ${darkMode ? 'bg-gray-800 border border-gray-700 focus:ring-gray-500 hover:bg-gray-750 hover:shadow-xl hover:shadow-purple-500/20' : 'bg-white focus:ring-purple-300 hover:shadow-xl hover:shadow-purple-500/20'}`
+                          : card.title === "Explore Cuisines"
+                            ? `transition-shadow duration-200 ${darkMode ? 'bg-gray-800 border border-gray-700 focus:ring-gray-500 hover:bg-gray-750 hover:shadow-xl hover:shadow-orange-500/20' : 'bg-white focus:ring-orange-300 hover:shadow-xl hover:shadow-orange-500/20'}`
+                            : darkMode 
+                              ? 'bg-gray-800 border border-gray-700 focus:ring-gray-500 hover:shadow-lg' 
+                              : 'bg-white focus:ring-gray-300 hover:shadow-lg'
                     }`}
                   >
                     <div className="relative z-10 flex flex-col items-start">
@@ -605,14 +657,18 @@ export function ActionCards({ darkMode = false }: ActionCardsProps) {
                           initial="initial"
                           animate={hoveredCard === card.title ? "hover" : "initial"}
                         >
-                        <card.icon className={cn("w-6 h-6", card.iconColor)} />
+                          {card.isCustomIcon ? (
+                            <card.icon className={cn("w-6 h-6", card.iconColor)} />
+                          ) : (
+                            <card.icon className={cn("w-6 h-6", card.iconColor)} />
+                          )}
                         </motion.div>
                       </div>
                       <h3 className={cn("text-lg font-semibold mb-2", 
                         darkMode ? "text-white" : card.titleColor
                       )}>{card.title}</h3>
-                      <p className={cn("text-sm", 
-                        darkMode ? "text-gray-300" : "text-gray-600"
+                      <p className={cn("text-sm leading-relaxed", 
+                        darkMode ? "text-gray-300" : card.subtitleColor
                       )}>{card.subtitle}</p>
                     </div>
                   </motion.div>

@@ -43,12 +43,11 @@ export const RoomSidebar: React.FC = () => {
   useEffect(() => {
     if (!currentRoom) return;
     
-    // Refresh immediately on mount or room change
-    refreshParticipantProfiles();
+    // Refresh immediately on mount or room change - removed excessive polling
+    // refreshParticipantProfiles();
     
-    // Remove the 30-second polling interval to prevent excessive requests
-    // Only refresh when the room actually changes
-  }, [currentRoom?.id]); // Only depend on room ID
+    // Only refresh when the room actually changes, not on a timer
+  }, [currentRoom?.id]);
   
   // Effect to handle time calculation
   useEffect(() => {
@@ -108,7 +107,7 @@ export const RoomSidebar: React.FC = () => {
     }
   };
   
-  // Timer update effect
+  // Timer update effect - reduced frequency to minimize requests
   useEffect(() => {
     if (!currentRoom || !currentRoom.expiresAt || isRoomExpired) return;
     
@@ -126,7 +125,7 @@ export const RoomSidebar: React.FC = () => {
         // Don't call handleExpiredRoom here since it's already being handled in RoomContext
         // This prevents duplicate handling of expired rooms
       }
-    }, 1000);
+    }, 5000); // Reduced from 1000ms to 5000ms (5 seconds) to reduce requests
     
     return () => clearInterval(timerInterval);
   }, [currentRoom?.id, currentRoom?.expiresAt, isRoomExpired]);

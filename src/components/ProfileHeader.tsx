@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { User, LogOut, Settings, ChevronDown } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
+import { useAppStore } from '../lib/store';
+import { getCachedAvatarUrl } from '../lib/avatarCache';
 
 export interface ProfileHeaderProps {
   user: any;
@@ -107,9 +109,9 @@ export function ProfileHeader({ user, onSignOut, darkMode = false }: ProfileHead
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-orange-200">
                   <img 
-                    src={user?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`} 
-                    alt="Profile" 
-                    className="w-full h-full object-cover"
+                    src={getCachedAvatarUrl(user?.id || '', user?.avatar_url)}
+                    alt={user?.username || 'User'} 
+                    className="w-full h-full rounded-full object-cover"
                   />
                 </div>
                 <div>
